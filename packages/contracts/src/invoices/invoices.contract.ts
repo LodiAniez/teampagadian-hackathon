@@ -86,6 +86,7 @@ export const invoicesContract = c.router(
       method: "POST",
       path: "/:invoiceId/void",
       pathParams: z.object({ invoiceId: z.string().uuid() }),
+      body: c.noBody(),
       responses: {
         200: InvoiceSchema,
         401: ErrorResponseSchema,

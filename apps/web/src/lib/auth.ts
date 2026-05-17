@@ -8,7 +8,7 @@ export async function getAccessToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-export async function authHeader(): Promise<Record<string, string>> {
+export async function authHeader(): Promise<{ authorization: string }> {
   const token = await getAccessToken();
-  return token ? { authorization: `Bearer ${token}` } : {};
+  return { authorization: token ? `Bearer ${token}` : "" };
 }

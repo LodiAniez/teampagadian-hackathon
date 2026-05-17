@@ -21,7 +21,7 @@ export function useInvoices({ status }: UseInvoicesOptions = {}): UseInvoicesRes
     queryFn: async () => {
       const result = await api.invoices.list({
         query: { limit: 20, ...(status ? { status } : {}) },
-        extraHeaders: await authHeader(),
+        headers: await authHeader(),
       });
       if (result.status !== 200) {
         throw new Error(`Failed to load invoices (status ${result.status})`);

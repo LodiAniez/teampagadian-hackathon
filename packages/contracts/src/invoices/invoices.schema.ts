@@ -1,0 +1,83 @@
+import { z } from "zod";
+import { SupportedCurrencySchema } from "../shared/money";
+
+export const InvoiceStatusSchema = z.enum([
+  "draft",
+  "sent",
+  "paid",
+  "overdue",
+  "void",
+]);
+export type InvoiceStatus = z.infer<typeof InvoiceStatusSchema>;
+
+export const InvoiceSourceTypeSchema = z.enum(["text", "upload", "manual"]);
+export type InvoiceSourceType = z.infer<typeof InvoiceSourceTypeSchema>;
+
+export const InvoiceLineItemSchema = z.object({
+  id: z.string().uuid(),
+  description: z.string().min(1).max(500),
+  quantity: z.number().positive(),
+  unit: z.string().max(32),
+  rate: z.number().nonnegative(),
+  amount: z.number().nonnegative(),
+});
+export type InvoiceLineItem = z.infer<typeof InvoiceLineItemSchema>;
+
+export const InvoiceSchema = z.object({
+  id: z.string().uuid(),
+  clientId: z.string().uuid(),
+  status: InvoiceStatusSchema,
+  amount: z.number().nonnegative(),
+  currency: SupportedCurrencySchema,
+  issueDate: z.string().date(),
+  dueDate: z.string().date(),
+  sourceType: InvoiceSourceTypeSchema,
+  lineItems: z.array(InvoiceLineItemSchema),
+  stripePaymentIntentId: z.string().nullable(),
+  createdAt: z.string().datetime(),
+});
+export type Invoice = z.infer<typeof InvoiceSchema>;
+
+export const CreateInvoiceLineItemSchema = InvoiceLineItemSchema.omit({
+  id: true,
+  amount: true,
+});
+export type CreateInvoiceLineItem = z.infer<typeof CreateInvoiceLineItemSchema>;
+
+export const CreateInvoiceBodySchema = z.object({
+  clientId: z.string().uuid(),
+  currency: SupportedCurrencySchema,
+  issueDate: z.string().date(),
+  dueDate: z.string().date(),
+  sourceType: InvoiceSourceTypeSchema,
+  lineItems: z.array(CreateInvoiceLineItemSchema).min(1),
+});
+export type CreateInvoiceBody = z.infer<typeof CreateInvoiceBodySchema>;
+
+export const ParseInvoiceTextBodySchema = z.object({
+  text: z.string().min(1).max(2000),
+  defaultCurrency: SupportedCurrencySchema.optional(),
+});
+export type ParseInvoiceTextBody = z.infer<typeof ParseInvoiceTextBodySchema>;
+
+export const ParsedInvoiceDraftSchema = z.object({
+  clientName: z.string(),
+  clientEmail: z.string().email().nullable(),
+  currency: SupportedCurrencySchema,
+  issueDate: z.string().date(),
+  dueDate: z.string().date(),
+  lineItems: z.array(CreateInvoiceLineItemSchema),
+});
+export type ParsedInvoiceDraft = z.infer<typeof ParsedInvoiceDraftSchema>;
+
+export const SendInvoiceBodySchema = z.object({
+  clientEmail: z.string().email(),
+});
+export type SendInvoiceBody = z.infer<typeof SendInvoiceBodySchema>;
+
+export const SendInvoiceResponseSchema = z.object({
+  invoice: InvoiceSchema,
+  checkoutUrl: z.string().url(),
+  qrCodeDataUrl: z.string().startsWith("data:image/"),
+});
+export type SendInvoiceResponse = z.infer<typeof SendInvoiceResponseSchema>;

@@ -18,6 +18,8 @@ datasource db {
 enum BirElection {
   EIGHT_PERCENT @map("8_percent")
   GRADUATED     @map("graduated")
+
+  @@map("bir_election")
 }
 
 model User {
@@ -39,7 +41,7 @@ model User {
 }
 
 model OtpChallenge {
-  id        String    @id @default(uuid())
+  id        String    @id @default(uuid()) @db.Uuid
   phone     String
   codeHash  String    @map("code_hash")
   expiresAt DateTime  @map("expires_at")
@@ -56,8 +58,8 @@ model OtpChallenge {
 // ---------------------------------------------------------------------------
 
 model PayoutMethod {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
   type      String // "card" | "gcash" | "maya" | "bank" (extensible)
   details   Json
   isDefault Boolean  @default(false) @map("is_default")
@@ -76,8 +78,8 @@ model PayoutMethod {
 // ---------------------------------------------------------------------------
 
 model Client {
-  id              String   @id @default(uuid())
-  userId          String   @map("user_id")
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
   name            String
   email           String?
   country         String?  @db.VarChar(2) // ISO-3166 alpha-2
@@ -115,9 +117,9 @@ enum InvoiceSourceType {
 }
 
 model Invoice {
-  id                     String            @id @default(uuid())
-  userId                 String            @map("user_id")
-  clientId               String            @map("client_id")
+  id                     String            @id @default(uuid()) @db.Uuid
+  userId                 String            @map("user_id") @db.Uuid
+  clientId               String            @map("client_id") @db.Uuid
   status                 InvoiceStatus     @default(draft)
   amount                 Decimal           @db.Decimal(18, 2)
   currency               String            @db.VarChar(3)
@@ -143,8 +145,8 @@ model Invoice {
 }
 
 model InvoiceLineItem {
-  id          String  @id @default(uuid())
-  invoiceId   String  @map("invoice_id")
+  id          String  @id @default(uuid()) @db.Uuid
+  invoiceId   String  @map("invoice_id") @db.Uuid
   description String
   quantity    Decimal @db.Decimal(18, 4)
   unit        String  @default("unit") @db.VarChar(32)
@@ -163,8 +165,8 @@ model InvoiceLineItem {
 // ---------------------------------------------------------------------------
 
 model Payment {
-  id              String   @id @default(uuid())
-  invoiceId       String   @map("invoice_id")
+  id              String   @id @default(uuid()) @db.Uuid
+  invoiceId       String   @map("invoice_id") @db.Uuid
   amountSource    Decimal  @map("amount_source") @db.Decimal(18, 2)
   currencySource  String   @map("currency_source") @db.VarChar(3)
   amountPhp       Decimal  @map("amount_php") @db.Decimal(18, 2)
@@ -190,9 +192,9 @@ enum PayoutStatus {
 }
 
 model Payout {
-  id              String       @id @default(uuid())
-  paymentId       String       @map("payment_id")
-  payoutMethodId  String       @map("payout_method_id")
+  id              String       @id @default(uuid()) @db.Uuid
+  paymentId       String       @map("payment_id") @db.Uuid
+  payoutMethodId  String       @map("payout_method_id") @db.Uuid
   amountPhp       Decimal      @map("amount_php") @db.Decimal(18, 2)
   status          PayoutStatus @default(pending)
   externalTxnId   String?      @map("external_txn_id")

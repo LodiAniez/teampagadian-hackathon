@@ -11,6 +11,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*", "test/**/*", "prisma/seed.ts"],
+  "include": ["src/**/*", "test/**/*", "prisma/seed.ts", "prisma.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

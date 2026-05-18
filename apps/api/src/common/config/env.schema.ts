@@ -7,6 +7,12 @@ export const EnvSchema = z.object({
   DATABASE_URL: z.string().url(),
   DIRECT_URL: z.string().url().optional(),
 
+  // Optional local-Postgres overrides. When NODE_ENV=development and
+  // LOCAL_DATABASE_URL is set, PrismaService uses these instead of the
+  // production DATABASE_URL / DIRECT_URL.
+  LOCAL_DATABASE_URL: z.string().url().optional(),
+  LOCAL_DIRECT_URL: z.string().url().optional(),
+
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),

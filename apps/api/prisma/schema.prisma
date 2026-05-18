@@ -15,14 +15,21 @@ datasource db {
 // Auth & users
 // ---------------------------------------------------------------------------
 
+enum BirElection {
+  EIGHT_PERCENT @map("8_percent")
+  GRADUATED     @map("graduated")
+}
+
 model User {
-  id              String   @id @default(uuid())
-  phone           String   @unique
-  name            String?
-  businessName    String?  @map("business_name")
-  defaultCurrency String   @default("USD") @map("default_currency") @db.VarChar(3)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                String       @id @default(uuid()) @db.Uuid
+  phone             String       @unique
+  name              String?
+  businessName      String?      @map("business_name")
+  defaultCurrency   String       @default("USD") @map("default_currency") @db.VarChar(3)
+  defaultHourlyRate Json?        @map("default_hourly_rate")
+  bir2303Election   BirElection? @map("bir_2303_election")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
   payoutMethods PayoutMethod[]
   clients       Client[]

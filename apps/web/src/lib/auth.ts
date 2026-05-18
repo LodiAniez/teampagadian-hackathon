@@ -43,13 +43,12 @@ export async function authHeader(): Promise<{ authorization: string }> {
   return { authorization: token ? `Bearer ${token}` : "" };
 }
 
-
 const TOKEN_KEY = "access_token" as const;
 
 export const setToken = (token: string) => {
   Cookies.set(TOKEN_KEY, token, {
     expires: 7,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
   });
 };

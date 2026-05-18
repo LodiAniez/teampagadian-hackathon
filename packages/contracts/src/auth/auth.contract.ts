@@ -4,10 +4,10 @@ import { ErrorResponseSchema } from "../shared/error";
 import {
   RequestOtpBodySchema,
   RequestOtpResponseSchema,
-  SessionSchema,
   UpdateProfileBodySchema,
   UserSchema,
   VerifyOtpBodySchema,
+  VerifyOtpResponseSchema,
 } from "./auth.schema";
 
 const c = initContract();
@@ -34,7 +34,7 @@ export const authContract = c.router(
       path: "/verify-otp",
       body: VerifyOtpBodySchema,
       responses: {
-        200: SessionSchema,
+        200: VerifyOtpResponseSchema,
         401: ErrorResponseSchema,
         422: ErrorResponseSchema,
       },

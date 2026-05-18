@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "steps": {
+    "install": {
+      "commands": ["npm install"]
+    },
+    "build": {
+      "commands": []
+    }
+  },
+  "deploy": {
+    "startCommand": "npm run start:prod -w @raket/api"
+  }
+}

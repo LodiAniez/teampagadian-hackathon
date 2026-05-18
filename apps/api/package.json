@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
@@ -30,8 +31,10 @@
     "@ts-rest/nest": "^3.51.0",
     "express": "^4.21.2",
     "pg": "^8.20.0",
+    "prisma": "^7.8.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "tsx": "^4.19.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -40,9 +43,7 @@
     "@types/node": "^22.10.5",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^6.0.2",
-    "prisma": "^7.8.0",
     "supertest": "^7.0.0",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8",
     "vitest-mock-extended": "^2.0.2"

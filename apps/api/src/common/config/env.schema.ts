@@ -18,7 +18,9 @@ export const EnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
+  // Optional at boot: Railway sets this only after the Stripe webhook endpoint
+  // is configured, which happens after the API has a public URL.
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
   ANTHROPIC_API_KEY: z.string().startsWith("sk-ant-"),
 

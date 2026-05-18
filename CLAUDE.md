@@ -4,6 +4,8 @@ Cross-border payment platform for Filipino freelancers. Turborepo monorepo: Next
 
 Read the PRD for product context: [`docs/prd.md`](docs/prd.md).
 
+For local dev setup, see [`docs/ONBOARDING.md`](docs/ONBOARDING.md).
+
 ## Conventions — read before writing code
 
 These docs are authoritative. If something here conflicts with a convention doc, the convention doc wins; raise it for discussion instead of silently diverging.

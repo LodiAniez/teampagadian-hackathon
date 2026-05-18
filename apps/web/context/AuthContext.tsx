@@ -6,19 +6,23 @@ import {
   useEffect,
 } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AuthContext as AuthCtx } from "../types/auth";
-import { authService } from "../lib/services/auth.service";
-import { clearToken } from "../lib/auth-cookie";
+import {  useQueryClient } from "@tanstack/react-query";
+import { clearToken } from "@/lib/auth";
+import {useAuth, type UseAuthResult as UseAuthContext} from "@/features/auth/hooks/use-auth"
 
 type Props = {
   children: React.ReactNode;
 };
 
+interface AuthCtx extends UseAuthContext {
+  logout: () => void,
+}
+
 const AuthContext = createContext<AuthCtx>({
   user: null,
   isLoading: true,
-  logout: async () => {},
+  logout: async () => { },
+  error: null
 });
 
 export function AuthProvider({ children }: Props) {
@@ -32,29 +36,19 @@ export function AuthProvider({ children }: Props) {
    * - background refetch
    * - retry control
    */
-  const {
-    data,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: authService.me,
-    retry: false,
-  });
-
-  const user = data ?? null;
+  const {error, isLoading, user} = useAuth()
 
   /**
    * GLOBAL AUTH FAILURE HANDLER
    * If /me fails → treat as unauthenticated
    */
   useEffect(() => {
-    if (isError) {
+    if (error) {
       clearToken();
       queryClient.removeQueries({ queryKey: ["auth", "me"] });
       router.push("/login");
     }
-  }, [isError]);
+  }, [error]);
 
   /**
    * LOGOUT
@@ -71,6 +65,7 @@ export function AuthProvider({ children }: Props) {
         user,
         isLoading,
         logout,
+        error
       }}
     >
       {children}
@@ -78,4 +73,4 @@ export function AuthProvider({ children }: Props) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuthContext = () => useContext(AuthContext);  

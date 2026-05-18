@@ -22,6 +22,8 @@ export const EnvSchema = z.object({
   // is configured, which happens after the API has a public URL.
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
+  JWT_SECRET: z.string().min(32),
+
   ANTHROPIC_API_KEY: z.string().startsWith("sk-ant-"),
 
   RESEND_API_KEY: z.string().startsWith("re_"),

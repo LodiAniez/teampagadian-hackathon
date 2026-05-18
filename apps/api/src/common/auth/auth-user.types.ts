@@ -2,7 +2,7 @@ import type { Request } from "express";
 
 export type AuthUser = {
   id: string;
-  phone: string | null;
+  phone: string;
 };
 
 export type AuthedRequest = Request & {

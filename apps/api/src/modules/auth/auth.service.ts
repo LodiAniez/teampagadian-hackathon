@@ -1,4 +1,4 @@
-import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
@@ -12,7 +12,7 @@ import type {
 } from "@raket/contracts";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { EnvConfig } from "../../common/config/env.schema";
-import { toUserDto } from "./auth.mapper";
+import { CONTRACT_TO_PRISMA_ELECTION, toUserDto } from "./auth.mapper";
 
 const OTP_TTL_SECONDS = 300;
 
@@ -85,11 +85,25 @@ export class AuthService {
     return { user: toUserDto(user), accessToken, isNewUser };
   }
 
-  async me(_userId: string): Promise<User> {
-    throw new Error("me: implement in TEA-17");
+  async me(userId: string): Promise<User> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+    return toUserDto(user);
   }
 
-  async updateProfile(_userId: string, _body: UpdateProfileDto): Promise<User> {
-    throw new Error("updateProfile: implement in TEA-17");
+  async updateProfile(userId: string, body: UpdateProfileDto): Promise<User> {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: body.name,
+        businessName: body.businessName,
+        defaultCurrency: body.defaultCurrency,
+        defaultHourlyRate: body.defaultHourlyRate,
+        ...(body.bir2303Election !== undefined && {
+          bir2303Election: CONTRACT_TO_PRISMA_ELECTION[body.bir2303Election],
+        }),
+      },
+    });
+    return toUserDto(updated);
   }
 }

@@ -19,7 +19,13 @@ for (const envPath of [monorepoEnv, localEnv]) {
 // Migrate / introspect CLI operations need a direct, unpooled connection.
 // Runtime PrismaClient uses the pooled DATABASE_URL via the adapter in
 // PrismaService — see apps/api/src/common/prisma/prisma.service.ts.
-const migrateUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+// In development, LOCAL_DIRECT_URL / LOCAL_DATABASE_URL override so migrations
+// run against the local Postgres instead of the remote Supabase one.
+const isDev = process.env.NODE_ENV === "development" || process.env.NODE_ENV === undefined;
+const migrateUrl =
+  (isDev && (process.env.LOCAL_DIRECT_URL ?? process.env.LOCAL_DATABASE_URL)) ||
+  process.env.DIRECT_URL ||
+  process.env.DATABASE_URL;
 
 export default defineConfig({
   schema: "./prisma/schema.prisma",

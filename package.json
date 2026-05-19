@@ -10,12 +10,12 @@
     "node": ">=20.18.0"
   },
   "scripts": {
-    "build": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run build",
-    "dev": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run dev",
+    "build": "cross-env TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run build",
+    "dev": "cross-env TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run dev",
     "start": "npm run start:prod -w @raket/api",
-    "lint": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run lint",
-    "typecheck": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run typecheck",
-    "test": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run test",
+    "lint": "cross-env TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run lint",
+    "typecheck": "cross-env TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run typecheck",
+    "test": "cross-env TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,yml,yaml}\"",
     "prepare": "husky || true"
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.19",
+    "cross-env": "^7.0.3",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.4.2",

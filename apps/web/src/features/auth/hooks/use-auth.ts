@@ -10,12 +10,12 @@ export type UseAuthResult = {
 };
 
 export function useAuth(): UseAuthResult {
+  const token = getToken();
   const query = useQuery({
     queryKey: ["auth", "me"],
     queryFn: async () => {
-      const token = getToken();
       const result = await api.auth.me({
-        headers: { authorization: token ? `Bearer ${token}` : "" },
+        headers: { authorization: `Bearer ${token}` },
       });
 
       if (result.status !== 200) {
@@ -23,6 +23,7 @@ export function useAuth(): UseAuthResult {
       }
       return result.body;
     },
+    enabled: !!token,
     staleTime: 5 * 60 * 1000,
     retry: (failureCount, error) =>
       failureCount < 1 && !(error instanceof Error && error.message === "Unauthorized"),
@@ -30,7 +31,7 @@ export function useAuth(): UseAuthResult {
 
   return {
     user: query.data ?? null,
-    isLoading: query.isPending,
+    isLoading: query.isLoading,
     error: query.error instanceof Error ? query.error : null,
   };
 }

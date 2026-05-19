@@ -15,11 +15,13 @@ import type { EnvConfig } from "../../common/config/env.schema";
 import { CONTRACT_TO_PRISMA_ELECTION, toUserDto } from "./auth.mapper";
 
 const OTP_TTL_SECONDS = 300;
+const STATIC_DEMO_OTP = "123456";
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly isDev: boolean;
+  private readonly otpTestMode: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -27,11 +29,14 @@ export class AuthService {
     config: ConfigService<EnvConfig, true>,
   ) {
     this.isDev = config.get("NODE_ENV", { infer: true }) !== "production";
+    this.otpTestMode = config.get("OTP_TEST", { infer: true });
   }
 
   async requestOtp(body: RequestOtpDto): Promise<RequestOtpResponse> {
     const { phone } = body;
-    const code = Math.floor(100_000 + Math.random() * 900_000).toString();
+    const code = this.otpTestMode
+      ? STATIC_DEMO_OTP
+      : Math.floor(100_000 + Math.random() * 900_000).toString();
     const codeHash = await bcrypt.hash(code, 10);
     const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000);
 
@@ -39,10 +44,11 @@ export class AuthService {
 
     this.logger.log(`[MOCK SMS to ${phone}] Your Raket code: ${code}`);
 
+    const exposeDevCode = this.isDev || this.otpTestMode;
     return {
       success: true,
       expiresInSeconds: OTP_TTL_SECONDS,
-      ...(this.isDev && { devOtpCode: code }),
+      ...(exposeDevCode && { devOtpCode: code }),
     };
   }
 

@@ -31,6 +31,13 @@ export const EnvSchema = z.object({
 
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   EXCHANGE_RATE_API_URL: z.string().url().default("https://api.exchangerate.host"),
+
+  // When true, AuthService.requestOtp issues the static demo code "123456"
+  // instead of a random 6-digit code. Demo-only convenience; safe to enable
+  // anywhere (including prod) because the OTP path is mocked SMS regardless.
+  OTP_TEST: z
+    .preprocess((v) => (typeof v === "string" ? v === "true" : v), z.boolean())
+    .default(false),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;

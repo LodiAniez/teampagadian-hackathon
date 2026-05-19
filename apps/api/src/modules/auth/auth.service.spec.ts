@@ -59,7 +59,11 @@ describe("AuthService", () => {
     mockCompare = vi.mocked(bcrypt.compare) as Mock<CompareFn>;
 
     jwtMock.sign.mockReturnValue("mock-token");
-    configMock.get.mockReturnValue("development" as never);
+    configMock.get.mockImplementation(((key: keyof EnvConfig) => {
+      if (key === "NODE_ENV") return "development";
+      if (key === "OTP_TEST") return false;
+      return undefined;
+    }) as never);
 
     service = new AuthService(prisma, jwtMock, configMock);
   });
@@ -83,7 +87,11 @@ describe("AuthService", () => {
 
     it("omits devOtpCode when NODE_ENV is production", async () => {
       const prodConfig = mockDeep<ConfigService<EnvConfig, true>>();
-      prodConfig.get.mockReturnValue("production" as never);
+      prodConfig.get.mockImplementation(((key: keyof EnvConfig) => {
+        if (key === "NODE_ENV") return "production";
+        if (key === "OTP_TEST") return false;
+        return undefined;
+      }) as never);
       const prodService = new AuthService(prisma, jwtMock, prodConfig);
 
       mockHash.mockResolvedValue("hashed-code");
@@ -92,6 +100,40 @@ describe("AuthService", () => {
       const result = await prodService.requestOtp({ phone });
 
       expect(result.devOtpCode).toBeUndefined();
+    });
+
+    it("returns devOtpCode in production when OTP_TEST is true", async () => {
+      const prodTestConfig = mockDeep<ConfigService<EnvConfig, true>>();
+      prodTestConfig.get.mockImplementation(((key: keyof EnvConfig) => {
+        if (key === "NODE_ENV") return "production";
+        if (key === "OTP_TEST") return true;
+        return undefined;
+      }) as never);
+      const prodTestService = new AuthService(prisma, jwtMock, prodTestConfig);
+
+      mockHash.mockResolvedValue("hashed-code");
+      prisma.otpChallenge.create.mockResolvedValue(mockOtp);
+
+      const result = await prodTestService.requestOtp({ phone });
+
+      expect(result.devOtpCode).toBe("123456");
+    });
+
+    it('issues the static demo code "123456" when OTP_TEST is true', async () => {
+      configMock.get.mockImplementation(((key: keyof EnvConfig) => {
+        if (key === "NODE_ENV") return "development";
+        if (key === "OTP_TEST") return true;
+        return undefined;
+      }) as never);
+      const testModeService = new AuthService(prisma, jwtMock, configMock);
+
+      mockHash.mockResolvedValue("hashed-code");
+      prisma.otpChallenge.create.mockResolvedValue(mockOtp);
+
+      const result = await testModeService.requestOtp({ phone });
+
+      expect(mockHash).toHaveBeenCalledWith("123456", 10);
+      expect(result.devOtpCode).toBe("123456");
     });
   });
 

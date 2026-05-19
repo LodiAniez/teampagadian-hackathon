@@ -10,7 +10,7 @@ vi.mock("@/lib/auth", () => ({ getToken: vi.fn() }));
 
 import { api } from "../api/auth.api";
 import { getToken } from "@/lib/auth";
-import { useAuth } from "./use-auth";
+import { useAuth, UnauthorizedError } from "./use-auth";
 
 const mockMe = vi.mocked(api.auth.me);
 const mockGetToken = vi.mocked(getToken);
@@ -64,17 +64,24 @@ describe("useAuth", () => {
     });
   });
 
-  it("returns an error when the API responds with non-200", async () => {
+  it("returns UnauthorizedError on 401", async () => {
     mockGetToken.mockReturnValue("expired-token");
-    mockMe.mockResolvedValue({
-      status: 401,
-      body: { message: "Unauthorized" },
-    } as never);
+    mockMe.mockResolvedValue({ status: 401, body: { message: "Unauthorized" } } as never);
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
-    await waitFor(() => expect(result.current.error).toBeInstanceOf(Error));
-    expect(result.current.error?.message).toBe("Unauthorized");
+    await waitFor(() => expect(result.current.error).toBeInstanceOf(UnauthorizedError));
     expect(result.current.user).toBeNull();
+  });
+
+  it("returns a generic error on non-401 failure without UnauthorizedError", async () => {
+    mockGetToken.mockReturnValue("valid-token");
+    mockMe.mockResolvedValue({ status: 500, body: {} } as never);
+
+    const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+
+    // Hook retries once on non-401 errors (1 s exponential delay) — allow 3 s
+    await waitFor(() => expect(result.current.error).toBeInstanceOf(Error), { timeout: 3000 });
+    expect(result.current.error).not.toBeInstanceOf(UnauthorizedError);
   });
 });

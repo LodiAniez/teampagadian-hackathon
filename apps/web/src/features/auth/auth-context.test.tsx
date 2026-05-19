@@ -4,12 +4,15 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: vi.fn() }));
-vi.mock("./hooks/use-auth", () => ({ useAuth: vi.fn() }));
+vi.mock("./hooks/use-auth", () => ({
+  useAuth: vi.fn(),
+  UnauthorizedError: class UnauthorizedError extends Error {},
+}));
 vi.mock("@/lib/auth", () => ({ clearToken: vi.fn() }));
 
 import { useRouter } from "next/navigation";
 import { clearToken } from "@/lib/auth";
-import { useAuth } from "./hooks/use-auth";
+import { useAuth, UnauthorizedError } from "./hooks/use-auth";
 import { AuthProvider, useAuthContext } from "./auth-context";
 
 const mockPush = vi.fn();
@@ -43,11 +46,11 @@ describe("AuthProvider", () => {
     mockUseAuth.mockReturnValue({ user: null, isLoading: false, error: null });
   });
 
-  it("redirects to /login and clears token when useAuth returns an error", async () => {
+  it("redirects to /login and clears token only on UnauthorizedError", async () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
-      error: new Error("Unauthorized"),
+      error: new UnauthorizedError(),
     });
 
     const Wrapper = createWrapper();
@@ -63,6 +66,27 @@ describe("AuthProvider", () => {
       expect(mockClearToken).toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith("/login");
     });
+  });
+
+  it("does not redirect on generic (non-401) errors", async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isLoading: false,
+      error: new Error("Network error"),
+    });
+
+    const Wrapper = createWrapper();
+    render(
+      <Wrapper>
+        <AuthProvider>
+          <div />
+        </AuthProvider>
+      </Wrapper>,
+    );
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockClearToken).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("clears token and redirects to /login when logout is called", () => {

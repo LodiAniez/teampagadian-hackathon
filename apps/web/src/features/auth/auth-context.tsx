@@ -1,21 +1,16 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearToken } from "@/lib/auth";
-import { useAuth, type UseAuthResult } from "./hooks/use-auth";
+import { useAuth, type UseAuthResult, UnauthorizedError } from "./hooks/use-auth";
 
 interface AuthCtx extends UseAuthResult {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthCtx>({
-  user: null,
-  isLoading: true,
-  logout: () => {},
-  error: null,
-});
+const AuthContext = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -23,7 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { error, isLoading, user } = useAuth();
 
   useEffect(() => {
-    if (error) {
+    if (error instanceof UnauthorizedError) {
       clearToken();
       queryClient.removeQueries({ queryKey: ["auth", "me"] });
       router.push("/login");
@@ -36,11 +31,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }, [router, queryClient]);
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, logout, error }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, isLoading, logout, error }),
+    [user, isLoading, logout, error],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useAuthContext = () => useContext(AuthContext);
+export const useAuthContext = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuthContext must be used inside AuthProvider");
+  return ctx;
+};

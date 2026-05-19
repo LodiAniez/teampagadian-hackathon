@@ -1,6 +1,6 @@
 "use client";
 
-const ACCESS_TOKEN_COOKIE = "raket_access_token";
+import { ACCESS_TOKEN_COOKIE } from "./cookie-names";
 const SEVEN_DAYS_SECONDS = 60 * 60 * 24 * 7;
 
 function readCookie(name: string): string | null {
@@ -41,3 +41,7 @@ export async function authHeader(): Promise<{ authorization: string }> {
   const token = await getAccessToken();
   return { authorization: token ? `Bearer ${token}` : "" };
 }
+
+// Synchronous read — used by useAuth's `enabled` guard and auth-context
+export const getToken = (): string | null => readCookie(ACCESS_TOKEN_COOKIE);
+export const clearToken = clearAccessToken;

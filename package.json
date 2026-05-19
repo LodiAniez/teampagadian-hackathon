@@ -10,12 +10,12 @@
     "node": ">=20.18.0"
   },
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
+    "build": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run build",
+    "dev": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run dev",
     "start": "npm run start:prod -w @raket/api",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "lint": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run lint",
+    "typecheck": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run typecheck",
+    "test": "TURBO_DANGEROUSLY_DISABLE_PACKAGE_MANAGER_CHECK=1 turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,yml,yaml}\"",
     "prepare": "husky || true"

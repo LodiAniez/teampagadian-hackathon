@@ -1,9 +1,14 @@
 import type { BirElection, User as PrismaUser } from "@prisma/client";
-import type { User } from "@raket/contracts";
+import type { BirElection as ContractBirElection, User } from "@raket/contracts";
 
-const BIR_ELECTION_MAP: Record<BirElection, "8_percent" | "graduated"> = {
+const BIR_ELECTION_MAP: Record<BirElection, ContractBirElection> = {
   EIGHT_PERCENT: "8_percent",
   GRADUATED: "graduated",
+};
+
+export const CONTRACT_TO_PRISMA_ELECTION: Record<ContractBirElection, BirElection> = {
+  "8_percent": "EIGHT_PERCENT",
+  graduated: "GRADUATED",
 };
 
 export function toUserDto(user: PrismaUser): User {

@@ -8,6 +8,7 @@ import { AuthService } from "./auth.service";
 @Module({
   imports: [
     JwtModule.registerAsync({
+      global: true,
       inject: [ConfigService],
       useFactory: (config: ConfigService<EnvConfig, true>) => ({
         secret: config.get("JWT_SECRET", { infer: true }),

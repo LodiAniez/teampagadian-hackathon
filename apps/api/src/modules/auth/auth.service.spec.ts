@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { mockDeep, type DeepMockProxy } from "vitest-mock-extended";
-import { UnauthorizedException } from "@nestjs/common";
+import { NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
@@ -163,6 +163,58 @@ describe("AuthService", () => {
           data: expect.objectContaining({ attempts: { increment: 1 } }),
         }),
       );
+    });
+  });
+
+  describe("me", () => {
+    it("returns user DTO for a valid userId", async () => {
+      prisma.user.findUnique.mockResolvedValue(mockUser);
+
+      const result = await service.me("user-id");
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: "user-id" } });
+      expect(result.id).toBe("user-id");
+      expect(result.phone).toBe(phone);
+    });
+
+    it("throws NotFoundException when user does not exist", async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.me("unknown-id")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("updateProfile", () => {
+    it("returns updated user DTO", async () => {
+      const updated = { ...mockUser, name: "Juan dela Cruz" };
+      prisma.user.update.mockResolvedValue(updated);
+
+      const result = await service.updateProfile("user-id", { name: "Juan dela Cruz" });
+
+      expect(result.name).toBe("Juan dela Cruz");
+    });
+
+    it("passes only provided fields to prisma (partial patch)", async () => {
+      prisma.user.update.mockResolvedValue(mockUser);
+
+      await service.updateProfile("user-id", { name: "Juan" });
+
+      const call = prisma.user.update.mock.calls[0][0];
+      expect(call.data).toHaveProperty("name", "Juan");
+      expect(call.data.businessName).toBeUndefined();
+      expect(call.data.defaultCurrency).toBeUndefined();
+    });
+
+    it("maps bir2303Election contract enum to Prisma enum", async () => {
+      prisma.user.update.mockResolvedValue({
+        ...mockUser,
+        bir2303Election: "EIGHT_PERCENT" as never,
+      });
+
+      await service.updateProfile("user-id", { bir2303Election: "8_percent" });
+
+      const call = prisma.user.update.mock.calls[0][0];
+      expect(call.data).toHaveProperty("bir2303Election", "EIGHT_PERCENT");
     });
   });
 });

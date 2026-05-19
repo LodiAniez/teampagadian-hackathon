@@ -40,7 +40,7 @@ describe("useAuth", () => {
   });
 
   it("skips the fetch when there is no token", () => {
-    mockGetToken.mockReturnValue(undefined);
+    mockGetToken.mockReturnValue(null);
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 

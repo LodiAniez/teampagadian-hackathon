@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get("access_token");
+  const token = request.cookies.get("raket_access_token");
   const path = request.nextUrl.pathname;
 
   const isProtected = path.startsWith("/dashboard") || path.startsWith("/setup-profile");
@@ -16,5 +16,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/setup-profile", "/login", "/verify"],
+  matcher: ["/dashboard/:path*", "/setup-profile/:path*", "/login", "/verify"],
 };

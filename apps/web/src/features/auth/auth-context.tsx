@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useCallback, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearToken } from "@/lib/auth";
@@ -30,11 +30,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [error, router, queryClient]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     clearToken();
     queryClient.removeQueries({ queryKey: ["auth", "me"] });
     router.push("/login");
-  };
+  }, [router, queryClient]);
 
   return (
     <AuthContext.Provider value={{ user, isLoading, logout, error }}>

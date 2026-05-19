@@ -40,4 +40,22 @@ describe("validateEnv", () => {
       }),
     ).toThrow(/STRIPE_WEBHOOK_SECRET/);
   });
+
+  it("defaults OTP_TEST to false when unset", () => {
+    const parsed = validateEnv(baseEnv());
+
+    expect(parsed.OTP_TEST).toBe(false);
+  });
+
+  it('coerces OTP_TEST="true" to boolean true', () => {
+    const parsed = validateEnv({ ...baseEnv(), OTP_TEST: "true" });
+
+    expect(parsed.OTP_TEST).toBe(true);
+  });
+
+  it('coerces OTP_TEST="false" to boolean false', () => {
+    const parsed = validateEnv({ ...baseEnv(), OTP_TEST: "false" });
+
+    expect(parsed.OTP_TEST).toBe(false);
+  });
 });

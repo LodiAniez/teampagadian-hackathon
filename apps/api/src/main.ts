@@ -10,8 +10,16 @@ async function bootstrap() {
 
   const config = app.get<ConfigService<EnvConfig, true>>(ConfigService);
   app.useGlobalFilters(new TsRestExceptionFilter());
+  const allowedOrigins = config.get("CORS_ORIGINS", { infer: true });
   app.enableCors({
-    origin: config.get("NEXT_PUBLIC_APP_URL", { infer: true }),
+    origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+      // Server-to-server callers (Stripe webhooks, curl, health checks)
+      // send no Origin header — let those through.
+      if (!origin) return cb(null, true);
+      return allowedOrigins.includes(origin)
+        ? cb(null, true)
+        : cb(new Error(`CORS: origin not allowed: ${origin}`));
+    },
     credentials: true,
   });
 

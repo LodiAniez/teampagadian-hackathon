@@ -30,6 +30,18 @@ export const EnvSchema = z.object({
   RESEND_FROM_EMAIL: z.string().email().optional(),
 
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  // Comma-separated allowlist of browser origins for CORS. Parsed into a
+  // validated URL array; each entry must be a full origin (no trailing path).
+  CORS_ORIGINS: z
+    .string()
+    .default("http://localhost:3000")
+    .transform((s) =>
+      s
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.string().url()).min(1)),
   EXCHANGE_RATE_API_URL: z.string().url().default("https://api.exchangerate.host"),
 
   // When true, AuthService.requestOtp issues the static demo code "123456"

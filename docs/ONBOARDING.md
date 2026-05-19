@@ -6,11 +6,11 @@ Cross-border payment platform for Filipino freelancers. Turborepo monorepo: **Ne
 
 ## Prerequisites
 
-| Tool | Min version | Check |
-|------|------------|-------|
-| Node.js | 20.18.0 | `node -v` |
-| npm | 10.x | `npm -v` |
-| Git | any | `git --version` |
+| Tool    | Min version | Check           |
+| ------- | ----------- | --------------- |
+| Node.js | 20.18.0     | `node -v`       |
+| npm     | 10.x        | `npm -v`        |
+| Git     | any         | `git --version` |
 
 You also need accounts / projects for: **Supabase**, **Stripe** (test mode), **Anthropic**, and **Resend**.
 
@@ -97,6 +97,7 @@ RESEND_FROM_EMAIL="invoices@yourdomain.com"   # optional in dev
 PORT=3001
 NEXT_PUBLIC_API_URL="http://localhost:3001/api/v1"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+CORS_ORIGINS="http://localhost:3000"   # comma-separated for multi-origin (staging, previews)
 EXCHANGE_RATE_API_URL="https://api.exchangerate.host"
 ```
 
@@ -142,10 +143,10 @@ From the repo root, Turborepo starts both apps in parallel:
 npm run dev
 ```
 
-| App | URL |
-|-----|-----|
-| Web (Next.js) | http://localhost:3000 |
-| API (NestJS) | http://localhost:3001/api/v1 |
+| App           | URL                          |
+| ------------- | ---------------------------- |
+| Web (Next.js) | http://localhost:3000        |
+| API (NestJS)  | http://localhost:3001/api/v1 |
 
 Turborepo streams both logs in one terminal with colour-coded prefixes. Press `Ctrl+C` to stop everything.
 

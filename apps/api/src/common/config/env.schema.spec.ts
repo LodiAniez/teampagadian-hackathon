@@ -58,4 +58,53 @@ describe("validateEnv", () => {
 
     expect(parsed.OTP_TEST).toBe(false);
   });
+
+  describe("CORS_ORIGINS", () => {
+    it("defaults to a single localhost origin when unset", () => {
+      const parsed = validateEnv(baseEnv());
+
+      expect(parsed.CORS_ORIGINS).toEqual(["http://localhost:3000"]);
+    });
+
+    it("parses a single origin", () => {
+      const parsed = validateEnv({
+        ...baseEnv(),
+        CORS_ORIGINS: "https://app.example.com",
+      });
+
+      expect(parsed.CORS_ORIGINS).toEqual(["https://app.example.com"]);
+    });
+
+    it("parses comma-separated origins and trims whitespace", () => {
+      const parsed = validateEnv({
+        ...baseEnv(),
+        CORS_ORIGINS:
+          "https://app.example.com, https://staging.example.com ,https://pr-42.example.com",
+      });
+
+      expect(parsed.CORS_ORIGINS).toEqual([
+        "https://app.example.com",
+        "https://staging.example.com",
+        "https://pr-42.example.com",
+      ]);
+    });
+
+    it("rejects an entry that is not a URL", () => {
+      expect(() =>
+        validateEnv({
+          ...baseEnv(),
+          CORS_ORIGINS: "https://app.example.com,not-a-url",
+        }),
+      ).toThrow(/CORS_ORIGINS/);
+    });
+
+    it("rejects an empty value", () => {
+      expect(() =>
+        validateEnv({
+          ...baseEnv(),
+          CORS_ORIGINS: "",
+        }),
+      ).toThrow(/CORS_ORIGINS/);
+    });
+  });
 });

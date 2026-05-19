@@ -45,4 +45,20 @@ describe("useResendOtp", () => {
       expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("123456")),
     );
   });
+
+  it("surfaces a toast.error and does not call onSuccess when the API returns a non-200", async () => {
+    requestOtpMock.mockResolvedValue({ status: 500, body: { message: "boom" } });
+    const onSuccess = vi.fn();
+
+    const { result } = renderHook(() => useResendOtp({ phone: "+639171234567", onSuccess }), {
+      wrapper,
+    });
+
+    await act(async () => {
+      await result.current.resend().catch(() => {});
+    });
+
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalled());
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
 });

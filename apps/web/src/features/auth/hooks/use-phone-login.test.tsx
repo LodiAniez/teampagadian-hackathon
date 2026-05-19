@@ -81,4 +81,18 @@ describe("usePhoneLogin", () => {
 
     expect(requestOtpMock).not.toHaveBeenCalled();
   });
+
+  it("surfaces a toast.error and does not navigate when the API returns a non-200", async () => {
+    requestOtpMock.mockResolvedValue({ status: 500, body: { message: "boom" } });
+
+    const { result } = renderHook(() => usePhoneLogin(), { wrapper });
+
+    act(() => result.current.form.setValue("localNumber", "9171234567"));
+    await act(async () => {
+      await result.current.onSubmit().catch(() => {});
+    });
+
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalled());
+    expect(pushMock).not.toHaveBeenCalled();
+  });
 });

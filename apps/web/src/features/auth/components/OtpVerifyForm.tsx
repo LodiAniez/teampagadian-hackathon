@@ -12,17 +12,15 @@ type Props = { phone: string };
 
 export function OtpVerifyForm({ phone }: Props) {
   const { code, setCode, isSubmitting, error } = useOtpVerify({ phone });
-  const cooldown = useResendCooldown(RESEND_COOLDOWN_SECONDS);
+  const { remaining, isReady, start: startCooldown } = useResendCooldown(RESEND_COOLDOWN_SECONDS);
   const { resend, isResending } = useResendOtp({
     phone,
-    onSuccess: cooldown.start,
+    onSuccess: startCooldown,
   });
 
-  // Start the cooldown on first paint since /verify lands right after a fresh OTP request.
   useEffect(() => {
-    cooldown.start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    startCooldown();
+  }, [startCooldown]);
 
   return (
     <OtpVerifyFormView
@@ -31,8 +29,8 @@ export function OtpVerifyForm({ phone }: Props) {
       setCode={setCode}
       isSubmitting={isSubmitting || isResending}
       error={error}
-      resendIsReady={cooldown.isReady}
-      resendRemaining={cooldown.remaining}
+      resendIsReady={isReady}
+      resendRemaining={remaining}
       onResend={() => {
         void resend();
       }}

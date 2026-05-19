@@ -15,7 +15,7 @@ export function useOtpVerify({ phone }: UseOtpVerifyOptions) {
   const [code, setCodeRaw] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const verify = useMutation({
+  const { mutate: submitCode, isPending: isSubmitting } = useMutation({
     mutationFn: async (submittedCode: string) => {
       const result = await api.auth.verifyOtp({ body: { phone, code: submittedCode } });
       if (result.status === 401) {
@@ -44,18 +44,15 @@ export function useOtpVerify({ phone }: UseOtpVerifyOptions) {
   }
 
   useEffect(() => {
-    if (code.length === OTP_LENGTH && !verify.isPending) {
-      verify.mutate(code);
+    if (code.length === OTP_LENGTH) {
+      submitCode(code);
     }
-    // verify.mutate is stable across renders; intentionally omitted from deps to
-    // avoid an extra firing when react-query updates internal state mid-mutation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
+  }, [code, submitCode]);
 
   return {
     code,
     setCode,
-    isSubmitting: verify.isPending,
+    isSubmitting,
     error,
   };
 }

@@ -4,14 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 
 export function useResendCooldown(seconds: number) {
   const [remaining, setRemaining] = useState(0);
+  const isActive = remaining > 0;
 
   useEffect(() => {
-    if (remaining <= 0) return;
+    if (!isActive) return;
     const id = setInterval(() => {
       setRemaining((r) => (r > 0 ? r - 1 : 0));
     }, 1000);
     return () => clearInterval(id);
-  }, [remaining]);
+  }, [isActive]);
 
   const start = useCallback(() => {
     setRemaining(seconds);
@@ -19,7 +20,7 @@ export function useResendCooldown(seconds: number) {
 
   return {
     remaining,
-    isReady: remaining <= 0,
+    isReady: !isActive,
     start,
   };
 }

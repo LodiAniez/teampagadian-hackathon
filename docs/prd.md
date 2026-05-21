@@ -287,17 +287,17 @@ payouts (id, payment_id, payout_method_id, amount_php, status, external_txn_id)
 
 ## 9. Risks & Mitigations
 
-| Risk                                         | Impact                          | Mitigation                                                                               |
-| -------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
-| Stripe webhook delayed or missed             | Demo-killing                    | Polling fallback every 10s catches it; test webhook on Railway URL before going on stage |
-| Hot wallet drained before demo               | Demo-killing                    | Balance check on NestJS startup; assigned team member tops up wallet morning of demo     |
-| Morph RPC unavailable during demo            | Demo-killing                    | Pre-recorded backup video of payment flow; have a confirmed txn hash ready as fallback   |
-| Morph testnet congestion or reorg            | Demo-killing                    | Test 20+ payments day-of; fallback to showing a pre-confirmed txn hash                   |
-| AI returns wrong/weird output on stage       | Credibility loss                | Pre-script demo prompts, seed data deliberately, test 10+ times                          |
-| BIR tax numbers are wrong                    | Credibility loss with PH judges | Verify rates against BIR.gov.ph the week of hackathon                                    |
-| Quotation upload fails on judge's random PDF | Demo-killing                    | Don't let judges upload — use pre-tested sample PDFs                                     |
-| WiFi fails on stage                          | Demo-killing                    | Record backup demo video by hour 40                                                      |
-| Scope creep                                  | Schedule slip                   | Lock V1 scope at hour 4, anything new goes to stretch list                               |
+| Risk                                         | Impact                          | Mitigation                                                                                                        |
+| -------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Stripe webhook delayed or missed             | Demo-killing                    | Polling fallback every 10s catches it; test webhook on Railway URL before going on stage                          |
+| Hot wallet drained before demo               | Demo-killing (demo only)        | Top-up at hour 0; production path uses Stripe Stablecoin Payments (no float) — risk does not exist post-hackathon |
+| Morph RPC unavailable during demo            | Demo-killing                    | Pre-recorded backup video of payment flow; have a confirmed txn hash ready as fallback                            |
+| Morph testnet congestion or reorg            | Demo-killing                    | Test 20+ payments day-of; fallback to showing a pre-confirmed txn hash                                            |
+| AI returns wrong/weird output on stage       | Credibility loss                | Pre-script demo prompts, seed data deliberately, test 10+ times                                                   |
+| BIR tax numbers are wrong                    | Credibility loss with PH judges | Verify rates against BIR.gov.ph the week of hackathon                                                             |
+| Quotation upload fails on judge's random PDF | Demo-killing                    | Don't let judges upload — use pre-tested sample PDFs                                                              |
+| WiFi fails on stage                          | Demo-killing                    | Record backup demo video by hour 40                                                                               |
+| Scope creep                                  | Schedule slip                   | Lock V1 scope at hour 4, anything new goes to stretch list                                                        |
 
 ---
 
@@ -360,7 +360,10 @@ If team is 3: drop Person D, distribute their work, but assign one explicit demo
 10. **BIR scope:** Generate pre-filled ITR (1701Q / 1701A) PDFs ready to file — filing itself stays with the freelancer via eBIRForms. We prepare, they submit.
 11. **Demo control:** Team controls the "client" device on stage — Stripe test card `4242 4242 4242 4242` pre-entered.
 12. **Invoice currency:** USD only for V1. Multi-currency is post-hackathon.
-13. **USD→USDC bridge:** Pre-funded hot wallet. Backend sends equivalent USDC when Stripe webhook fires. Disclosed in pitch as automated on-ramp in production.
+13. **USD→USDC bridge — hackathon vs production:**
+    - **Hackathon:** Pre-funded hot wallet. When the Stripe webhook fires, backend sends equivalent USDC from our wallet on Morph. This is scaffolding — Raket fronts the USDC out of its own balance.
+    - **Production:** **Stripe Stablecoin Payments** (built on Bridge, GA'd 2025). Client pays by card on Stripe Checkout → Stripe converts USD → USDC under the hood → deposits directly to our designated settlement wallet on-chain. No Raket float, no treasury risk, no "forgot to top up" failure mode.
+    - **Why the hot wallet doesn't survive to prod:** Every paid invoice draws USDC out of our balance, and Stripe pays us back via standard USD bank payouts days later. At any meaningful volume we'd be the bank, not the platform. Stripe Stablecoin Payments collapses the bridge into Stripe's existing rails, where it belongs.
 14. **No smart contract:** Hot wallet sends USDC directly to Coins.ph deposit address. Wallet-to-wallet transfer on Morph — no Solidity needed.
 15. **Morph settlement detection:** `viem.waitForTransactionReceipt()` after sending — synchronous, no event listener needed.
 16. **Stripe reliability:** Webhook primary (`payment_intent.succeeded`). Polling fallback every 10s if webhook doesn't fire within 10s.

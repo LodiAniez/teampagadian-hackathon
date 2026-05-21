@@ -16,8 +16,6 @@ Dependencies pulled from CDN (need internet on demo machine):
 - Lucide icons via unpkg (used sparingly)
 - QR codes via `api.qrserver.com`
 
-## File map
-
 ## Important: app vs browser
 
 **Raket is a freelancer-only app.** Clients never install it, never sign up, never see crypto. They receive an email, tap a link, and pay in their phone's browser. The mocks reflect this split:

@@ -261,7 +261,7 @@ payouts (id, payment_id, payout_method_id, amount_php, status, external_txn_id)
 
 - **Stripe:** Payment Intents (test mode), Webhooks (`payment_intent.succeeded`), polling fallback every 10s
 - **Morph Hoodi Testnet:** Chain ID `2910`, RPC `https://rpc-hoodi.morph.network`, Explorer `https://explorer-hoodi.morph.network`
-- **USDC on Morph Hoodi:** `0x1178341838B764dCfFA5BCEAb1d41443Fd71a227` — hot wallet sends ERC20 transfer via `viem.sendTransaction()` + `waitForTransactionReceipt()`
+- **USDC on Morph Hoodi:** `0x1178341838B764dCfFA5BCEAb1d41443Fd71a227` — hot wallet sends ERC20 transfer via `viem.writeContract()` (standard ERC20 `transfer(address,uint256)` ABI) + `waitForTransactionReceipt()`
 - **Coins.ph + InstaPay:** Mocked — animated UI sequence only. Real integration is post-hackathon.
 - **Supabase Realtime:** Subscribed to `invoices` table — pushes paid status to frontend for instant toast
 - **Claude API:** Messages API with tools, vision for quotation parsing

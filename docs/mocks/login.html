@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login · Raket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .login-screen { padding: 16px 24px 24px; flex: 1; display: flex; flex-direction: column; }
+    .login-brand { display: flex; align-items: center; gap: 10px; padding: 12px 0 32px; }
+    .login-brand .mark { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--brand-700), var(--brand-500)); color: white; display: grid; place-items: center; font-weight: 700; font-size: 18px; letter-spacing: -0.02em; }
+    .login-brand .name { font-weight: 700; font-size: 18px; letter-spacing: -0.02em; }
+    .login-title { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 8px; }
+    .login-sub   { font-size: 15px; color: var(--text-3); line-height: 1.5; margin: 0 0 28px; }
+    .phone-input { display: flex; align-items: stretch; gap: 8px; }
+    .country { display: flex; align-items: center; gap: 8px; padding: 0 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); font-weight: 600; font-size: 15px; min-height: 52px; }
+    .country .flag { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(180deg, #fff 50%, #0038a8 50%); position: relative; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
+    .country .flag::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 50%; background: linear-gradient(180deg, #ce1126 50%, #0038a8 50%); }
+    .input-phone { flex: 1; min-height: 52px; font-size: 17px; font-weight: 500; }
+    .otp-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 8px 0; }
+    .otp-box { aspect-ratio: 1 / 1.15; display: grid; place-items: center; border: 2px solid var(--border); border-radius: var(--r-md); background: var(--surface); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; color: var(--text-1); }
+    .otp-box.filled { border-color: var(--brand-700); background: var(--brand-50); color: var(--brand-800); }
+    .otp-hint { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--gold-300); background: rgba(251, 191, 36, 0.15); border: 1px dashed var(--gold-500); border-radius: var(--r-md); font-size: 12px; color: #92400e; }
+    .otp-hint svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .resend { text-align: center; font-size: 13px; color: var(--text-3); margin: 18px 0; }
+    .resend a { color: var(--brand-700); font-weight: 600; text-decoration: none; }
+    .legal { font-size: 11px; color: var(--text-4); text-align: center; line-height: 1.5; margin-top: 16px; }
+    .legal a { color: var(--text-3); text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="demo-bar-inner">
+      <a href="index.html" class="demo-brand">
+        <div class="demo-brand-mark">R</div>
+        <span>Raket</span>
+        <span class="demo-tag">demo</span>
+      </a>
+      <div style="position:relative">
+        <button class="demo-nav-btn" onclick="toggleDemoMenu(event)" id="demoBtn" aria-haspopup="menu" aria-expanded="false">
+          <span>Demo flow</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="demo-menu" id="demoMenu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-wrapper">
+    <div class="phone">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="1.5"/><circle cx="9" cy="20" r="1.5"/><circle cx="14" cy="20" r="1.5"/><circle cx="19" cy="20" r="1.5"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.95-3.55a7 7 0 0 1 9.9 0l-1.42 1.42a5 5 0 0 0-7.06 0l-1.42-1.42ZM2.81 10.7a11 11 0 0 1 18.38 0l-1.42 1.42a9 9 0 0 0-15.54 0L2.81 10.7Z"/></svg>
+            <svg width="22" height="11" viewBox="0 0 28 13" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="23" height="12" rx="3"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="currentColor"/><rect x="24.5" y="3.5" width="2.5" height="6" rx="1" fill="currentColor"/></svg>
+          </div>
+        </div>
+
+        <div class="login-screen">
+          <div class="login-brand">
+            <div class="mark">R</div>
+            <div class="name">Raket</div>
+          </div>
+
+          <h1 class="login-title">Welcome to Raket.</h1>
+          <p class="login-sub">Sign in with your phone number to manage your invoices and earnings.</p>
+
+          <label class="label">Phone number</label>
+          <div class="phone-input">
+            <div class="country">
+              <div class="flag" aria-hidden="true"></div>
+              <span>+63</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+            <input class="input input-phone" value="917 555 1234" aria-label="Phone number">
+          </div>
+
+          <div style="margin-top:24px">
+            <label class="label">Verification code</label>
+            <div class="otp-row">
+              <div class="otp-box filled">1</div>
+              <div class="otp-box filled">2</div>
+              <div class="otp-box filled">3</div>
+              <div class="otp-box filled">4</div>
+              <div class="otp-box filled">5</div>
+              <div class="otp-box filled">6</div>
+            </div>
+            <div class="otp-hint" style="margin-top:10px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              <span>Demo mode — code is <strong>123456</strong>. Production sends via SMS.</span>
+            </div>
+          </div>
+
+          <div class="resend">Didn&rsquo;t get a code? <a href="#">Resend in 28s</a></div>
+
+          <a href="dashboard.html" class="btn btn-primary" style="margin-top:auto">
+            <span>Continue</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </a>
+          <p class="legal">By continuing, you agree to Raket&rsquo;s <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="demo-caption">
+      <h1>Phone OTP login</h1>
+      <p>One screen. PH +63 prefix locked. Six-digit code. Tap <strong>Continue</strong> to enter the app.</p>
+    </div>
+  </div>
+
+  <script src="demo-nav.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

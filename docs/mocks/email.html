@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client email · Raket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .mail-bar { padding: 8px 16px 8px; display: flex; align-items: center; gap: 6px; background: #f8f7f5; border-bottom: 1px solid var(--border); }
+    .mail-bar .ib { width: 32px; height: 32px; display: grid; place-items: center; color: var(--brand-700); }
+    .mail-bar .ib svg { width: 20px; height: 20px; }
+    .mail-bar .spacer { flex: 1; }
+    .mail-meta { padding: 12px 16px 10px; background: white; border-bottom: 1px solid var(--border); }
+    .mail-meta .subject { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.3; margin-bottom: 8px; }
+    .mail-from { display: flex; align-items: center; gap: 10px; }
+    .mail-from .av { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--gold-400), var(--brand-700)); color: white; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+    .mail-from .who { flex: 1; min-width: 0; }
+    .mail-from .who .name { font-size: 13px; font-weight: 600; }
+    .mail-from .who .to   { font-size: 11px; color: var(--text-3); }
+    .mail-from .time { font-size: 11px; color: var(--text-3); }
+    .mail-content { flex: 1; overflow-y: auto; background: white; }
+    /* Email body uses table-based, inline-styled markup for email-client compatibility */
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="demo-bar-inner">
+      <a href="index.html" class="demo-brand">
+        <div class="demo-brand-mark">R</div>
+        <span>Raket</span>
+        <span class="demo-tag">demo</span>
+      </a>
+      <div style="position:relative">
+        <button class="demo-nav-btn" onclick="toggleDemoMenu(event)" id="demoBtn" aria-haspopup="menu" aria-expanded="false">
+          <span>Demo flow</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="demo-menu" id="demoMenu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-wrapper">
+    <div class="phone">
+      <div class="screen" style="background: white">
+        <div class="island"></div>
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="1.5"/><circle cx="9" cy="20" r="1.5"/><circle cx="14" cy="20" r="1.5"/><circle cx="19" cy="20" r="1.5"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.95-3.55a7 7 0 0 1 9.9 0l-1.42 1.42a5 5 0 0 0-7.06 0l-1.42-1.42ZM2.81 10.7a11 11 0 0 1 18.38 0l-1.42 1.42a9 9 0 0 0-15.54 0L2.81 10.7Z"/></svg>
+            <svg width="22" height="11" viewBox="0 0 28 13" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="23" height="12" rx="3"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="currentColor"/><rect x="24.5" y="3.5" width="2.5" height="6" rx="1" fill="currentColor"/></svg>
+          </div>
+        </div>
+
+        <div class="mail-bar">
+          <a href="invoice-sent.html" class="ib" aria-label="Back to inbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </a>
+          <div style="font-size:13px; font-weight:600; color:var(--brand-700)">Inbox</div>
+          <div class="spacer"></div>
+          <div class="ib"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>
+          <div class="ib"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 4 4 10 10 10"/><path d="M4 10a8 8 0 1 0 4-7"/></svg></div>
+        </div>
+
+        <div class="mail-meta">
+          <div class="subject">Maria Santos sent you an invoice for $1,600</div>
+          <div class="mail-from">
+            <div class="av">M</div>
+            <div class="who">
+              <div class="name">Maria Santos <span style="color:var(--text-3); font-weight:400">via Raket</span></div>
+              <div class="to">to ap@northwind.com</div>
+            </div>
+            <div class="time">9:38 AM</div>
+          </div>
+        </div>
+
+        <div class="mail-content">
+          <!-- ===== START OF EMAIL HTML (table-based, inline styles) ===== -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#fafaf9;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+            <tr>
+              <td align="center" style="padding:24px 18px 0;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e7e5e4;">
+                  <!-- Brand header -->
+                  <tr>
+                    <td style="padding:18px 22px 0;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                          <td>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                              <tr>
+                                <td style="background:#0f766e;width:28px;height:28px;border-radius:8px;color:#ffffff;font-weight:700;font-size:14px;text-align:center;line-height:28px;">R</td>
+                                <td style="padding-left:8px;font-weight:700;font-size:14px;color:#1c1917;letter-spacing:-0.01em;">Raket</td>
+                              </tr>
+                            </table>
+                          </td>
+                          <td align="right" style="font-size:11px;color:#78716c;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;">Invoice #1042</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <!-- Greeting -->
+                  <tr>
+                    <td style="padding:20px 22px 4px;">
+                      <h1 style="margin:0;font-size:22px;font-weight:700;letter-spacing:-0.02em;color:#1c1917;line-height:1.25;">Hi Acme team —</h1>
+                      <p style="margin:8px 0 0;font-size:14px;color:#44403c;line-height:1.55;">Maria Santos sent you an invoice for <strong>$1,600.00 USD</strong>, due Jun 4, 2026.</p>
+                    </td>
+                  </tr>
+
+                  <!-- Big pay button -->
+                  <tr>
+                    <td style="padding:18px 22px 4px;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                          <td align="center" style="background:#0f766e;border-radius:12px;">
+                            <a href="pay.html" style="display:block;padding:15px 20px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;letter-spacing:-0.01em;font-family:'Inter',sans-serif;">Pay $1,600.00 &rarr;</a>
+                          </td>
+                        </tr>
+                      </table>
+                      <p style="margin:10px 0 0;font-size:11px;color:#78716c;text-align:center;line-height:1.5;">Secure card checkout via Stripe. No account needed.</p>
+                    </td>
+                  </tr>
+
+                  <!-- Summary -->
+                  <tr>
+                    <td style="padding:22px 22px 0;">
+                      <div style="font-size:11px;color:#78716c;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:6px;">Invoice summary</div>
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border:1px solid #e7e5e4;border-radius:10px;">
+                        <tr>
+                          <td style="padding:12px 14px;border-bottom:1px dashed #e7e5e4;font-size:13px;color:#1c1917;">UI design (Northwind app)<br><span style="color:#78716c;font-size:11px;">20 hours &times; $80/hr</span></td>
+                          <td style="padding:12px 14px;border-bottom:1px dashed #e7e5e4;font-size:13px;color:#1c1917;font-weight:600;text-align:right;white-space:nowrap;">$1,600.00</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:12px 14px;font-size:13px;color:#78716c;">Issue date</td>
+                          <td style="padding:12px 14px;font-size:13px;color:#1c1917;text-align:right;">May 21, 2026</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:0 14px 12px;font-size:13px;color:#78716c;">Due (Net 14)</td>
+                          <td style="padding:0 14px 12px;font-size:13px;color:#1c1917;text-align:right;">Jun 4, 2026</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:14px;border-top:1px solid #e7e5e4;background:#fafaf9;border-radius:0 0 10px 10px;font-size:13px;font-weight:600;color:#1c1917;">Total</td>
+                          <td style="padding:14px;border-top:1px solid #e7e5e4;background:#fafaf9;border-radius:0 0 10px 10px;font-size:17px;font-weight:700;color:#1c1917;text-align:right;letter-spacing:-0.01em;">$1,600.00</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <!-- QR -->
+                  <tr>
+                    <td style="padding:22px 22px 0;" align="center">
+                      <div style="font-size:11px;color:#78716c;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:10px;">Or scan to pay on mobile</div>
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td style="background:#ffffff;padding:10px;border:1px solid #e7e5e4;border-radius:10px;">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A%2F%2Fraket.gg%2Fpay%2F1042&margin=2&color=0f766e&bgcolor=ffffff" width="120" height="120" alt="Scan to pay" style="display:block;">
+                          </td>
+                        </tr>
+                      </table>
+                      <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:#78716c;margin-top:10px;">raket.gg/pay/1042</div>
+                    </td>
+                  </tr>
+
+                  <!-- Personal note -->
+                  <tr>
+                    <td style="padding:24px 22px 4px;">
+                      <p style="margin:0;font-size:13px;color:#44403c;line-height:1.55;">Thanks again for the Northwind project — really enjoyed designing the onboarding flow. Let me know if anything needs adjusting before you process this.</p>
+                      <p style="margin:14px 0 0;font-size:13px;color:#1c1917;font-weight:600;">— Maria</p>
+                    </td>
+                  </tr>
+
+                  <!-- Footer -->
+                  <tr>
+                    <td style="padding:22px 22px 22px;border-top:1px solid #e7e5e4;margin-top:18px;">
+                      <p style="margin:18px 0 0;font-size:11px;color:#a8a29e;line-height:1.5;text-align:center;">
+                        Sent via <strong style="color:#0f766e;">Raket</strong> &middot; Filipino freelancers, paid globally.<br>
+                        Questions about this invoice? Reply to this email or write to maria.santos@raket.gg.<br>
+                        <a href="#" style="color:#a8a29e;text-decoration:underline;">View in browser</a> &middot;
+                        <a href="#" style="color:#a8a29e;text-decoration:underline;">Unsubscribe</a>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr><td style="height:24px;"></td></tr>
+          </table>
+          <!-- ===== END OF EMAIL HTML ===== -->
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="demo-caption">
+      <h1>The client&rsquo;s email</h1>
+      <p>Resend delivers this to <strong>accounts@northwind.com</strong> seconds after Maria sends. Tapping <strong>Pay Now</strong> opens the client&rsquo;s phone browser at <strong>raket.gg/pay/1042</strong> — they never install Raket, never see crypto, never sign up.</p>
+    </div>
+  </div>
+
+  <script src="demo-nav.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

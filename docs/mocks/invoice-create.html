@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create invoice · Raket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .ai-preview {
+      background: linear-gradient(135deg, rgba(15, 118, 110, 0.05), rgba(251, 191, 36, 0.05));
+      border: 1px solid var(--brand-200);
+      border-radius: var(--r-lg);
+      padding: 14px 14px 16px;
+      position: relative;
+    }
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      background: var(--brand-700);
+      color: white;
+      border-radius: var(--r-full);
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+    .ai-badge svg { width: 12px; height: 12px; }
+    .line-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 0;
+      border-top: 1px dashed var(--border);
+      font-size: 13px;
+    }
+    .line-row:first-of-type { border-top: none; padding-top: 4px; }
+    .line-row .desc { flex: 1; }
+    .line-row .qty  { color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .line-row .amt  { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .totals { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0 0; margin-top: 6px; border-top: 1px solid var(--border); }
+    .totals .label { font-size: 13px; color: var(--text-3); }
+    .totals .value { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .meta-item { padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); }
+    .meta-item .k { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .meta-item .v { font-size: 13px; font-weight: 600; margin-top: 2px; }
+    .sticky-actions {
+      position: absolute; left: 12px; right: 12px; bottom: 12px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      border-radius: 0 0 44px 44px;
+      padding: 14px 20px 28px;
+      display: flex; gap: 10px;
+      z-index: 30;
+    }
+    .sticky-actions .btn { min-height: 48px; padding: 12px 16px; font-size: 14px; }
+    .input-wrap-text { position: relative; }
+    .gen-btn {
+      position: absolute; right: 10px; bottom: 10px;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 12px;
+      background: var(--brand-700);
+      color: white;
+      border-radius: var(--r-md);
+      font-size: 12px; font-weight: 600;
+      border: none; cursor: pointer;
+      box-shadow: 0 4px 10px -2px rgba(15, 118, 110, 0.5);
+    }
+    .gen-btn svg { width: 14px; height: 14px; }
+    .upload-zone {
+      border: 2px dashed var(--border-strong);
+      border-radius: var(--r-md);
+      padding: 28px 16px;
+      text-align: center;
+      color: var(--text-3);
+      background: var(--surface);
+    }
+    .upload-zone svg { width: 28px; height: 28px; color: var(--text-4); margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="demo-bar-inner">
+      <a href="index.html" class="demo-brand">
+        <div class="demo-brand-mark">R</div>
+        <span>Raket</span>
+        <span class="demo-tag">demo</span>
+      </a>
+      <div style="position:relative">
+        <button class="demo-nav-btn" onclick="toggleDemoMenu(event)" id="demoBtn" aria-haspopup="menu" aria-expanded="false">
+          <span>Demo flow</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="demo-menu" id="demoMenu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-wrapper">
+    <div class="phone">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="1.5"/><circle cx="9" cy="20" r="1.5"/><circle cx="14" cy="20" r="1.5"/><circle cx="19" cy="20" r="1.5"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.95-3.55a7 7 0 0 1 9.9 0l-1.42 1.42a5 5 0 0 0-7.06 0l-1.42-1.42ZM2.81 10.7a11 11 0 0 1 18.38 0l-1.42 1.42a9 9 0 0 0-15.54 0L2.81 10.7Z"/></svg>
+            <svg width="22" height="11" viewBox="0 0 28 13" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="23" height="12" rx="3"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="currentColor"/><rect x="24.5" y="3.5" width="2.5" height="6" rx="1" fill="currentColor"/></svg>
+          </div>
+        </div>
+
+        <div class="app-bar">
+          <a href="dashboard.html" class="icon-btn" aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </a>
+          <div style="flex:1; text-align:center">
+            <h1 style="font-size:17px">New invoice</h1>
+          </div>
+          <a href="dashboard.html" class="icon-btn" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </a>
+        </div>
+
+        <div class="content" style="padding-bottom: 124px">
+          <div class="segmented" id="modeSeg">
+            <button class="active" data-mode="text">Text</button>
+            <button data-mode="upload">Upload</button>
+            <button data-mode="manual">Manual</button>
+          </div>
+
+          <div class="section-label">What did you do?</div>
+
+          <div id="mode-text">
+            <div class="input-wrap-text">
+              <textarea class="textarea" style="min-height: 100px; padding-right: 130px;">20 hours of UI design for Northwind at $80/hr, due in 14 days</textarea>
+              <button class="gen-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l1.5 4.5L19 9l-4.5 1.5L13 15l-1.5-4.5L7 9l4.5-1.5z"/></svg>
+                <span>Generate</span>
+              </button>
+            </div>
+            <p class="helper">Claude will pull client, line items, amounts, and dates. You review before sending.</p>
+          </div>
+
+          <div id="mode-upload" style="display:none">
+            <div class="upload-zone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <div style="font-size:14px; font-weight:600; color:var(--text-2)">Tap to upload a quote</div>
+              <div style="font-size:12px; margin-top:4px">PDF, PNG, JPG &middot; we&rsquo;ll read the line items</div>
+            </div>
+          </div>
+
+          <div id="mode-manual" style="display:none">
+            <div class="vstack" style="gap:12px">
+              <div>
+                <label class="label">Client</label>
+                <input class="input" placeholder="Select or add a client">
+              </div>
+              <div>
+                <label class="label">Description</label>
+                <input class="input" placeholder="What are you billing for?">
+              </div>
+              <div class="meta-grid">
+                <div>
+                  <label class="label">Amount (USD)</label>
+                  <input class="input" placeholder="$0.00">
+                </div>
+                <div>
+                  <label class="label">Due in</label>
+                  <input class="input" placeholder="30 days">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-label" id="aiSection">Raket AI &middot; preview</div>
+
+          <div class="ai-preview" id="aiPreview">
+            <div class="ai-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l1.5 4.5L19 9l-4.5 1.5L13 15l-1.5-4.5L7 9l4.5-1.5z"/></svg>
+              <span>Parsed by Claude</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:0.06em; font-weight:600">Bill to</div>
+            <div style="font-size:15px; font-weight:700; margin-top:2px">Acme Northwind</div>
+            <div style="font-size:12px; color:var(--text-3); margin-top:2px">accounts@northwind.com &middot; United States</div>
+
+            <div class="meta-grid">
+              <div class="meta-item"><div class="k">Issue date</div><div class="v">May 21, 2026</div></div>
+              <div class="meta-item"><div class="k">Due date</div><div class="v">Jun 4, 2026</div></div>
+            </div>
+
+            <div style="margin-top:14px">
+              <div class="line-row">
+                <div class="desc">UI design (Northwind app)</div>
+                <div class="qty">20 hr &times; $80</div>
+                <div class="amt">$1,600</div>
+              </div>
+            </div>
+
+            <div class="totals">
+              <div class="label">Total</div>
+              <div class="value tnum">$1,600.00</div>
+            </div>
+          </div>
+
+          <div class="section-label">Review &amp; edit</div>
+          <div class="card vstack" style="gap:12px">
+            <div>
+              <label class="label">Description</label>
+              <input class="input" value="UI design (Northwind app)">
+            </div>
+            <div class="meta-grid">
+              <div>
+                <label class="label">Hours</label>
+                <input class="input tnum" value="20">
+              </div>
+              <div>
+                <label class="label">Rate</label>
+                <input class="input tnum" value="$80">
+              </div>
+            </div>
+            <a href="#" class="btn btn-ghost" style="background:var(--brand-50)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Add another line item</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="sticky-actions">
+          <a href="dashboard.html" class="btn btn-secondary">Save draft</a>
+          <a href="invoice-sent.html" class="btn btn-primary">Continue to send</a>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="demo-caption">
+      <h1>Create invoice</h1>
+      <p>Type a sentence; Claude turns it into a structured invoice with client, line items, and dates. Review, then send.</p>
+    </div>
+  </div>
+
+  <script src="demo-nav.js"></script>
+  <script>
+    lucide.createIcons();
+    document.querySelectorAll('#modeSeg button').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('#modeSeg button').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        const m = b.dataset.mode;
+        ['text', 'upload', 'manual'].forEach(x => {
+          document.getElementById('mode-' + x).style.display = (x === m) ? '' : 'none';
+        });
+        document.getElementById('aiSection').style.display = (m === 'manual') ? 'none' : '';
+        document.getElementById('aiPreview').style.display = (m === 'manual') ? 'none' : '';
+      });
+    });
+  </script>
+</body>
+</html>

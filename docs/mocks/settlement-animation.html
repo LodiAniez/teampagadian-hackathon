@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settling · Raket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .settle-screen { padding: 0 22px; }
+    .settle-hero {
+      text-align: center;
+      padding: 24px 0 16px;
+    }
+    .ring-wrap {
+      position: relative;
+      width: 120px; height: 120px;
+      margin: 0 auto 16px;
+    }
+    .ring-bg, .ring-arc {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+    }
+    .ring-bg {
+      background: conic-gradient(var(--brand-700) 0deg, var(--brand-700) 360deg);
+      mask: radial-gradient(circle, transparent 56%, black 57%);
+      -webkit-mask: radial-gradient(circle, transparent 56%, black 57%);
+      opacity: 0.1;
+    }
+    .ring-arc {
+      background: conic-gradient(var(--brand-700) 0deg, var(--gold-500) var(--p, 0deg), transparent var(--p, 0deg));
+      mask: radial-gradient(circle, transparent 56%, black 57%);
+      -webkit-mask: radial-gradient(circle, transparent 56%, black 57%);
+      transition: background 0.4s ease;
+    }
+    .ring-center {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      font-size: 28px; font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-1);
+      font-variant-numeric: tabular-nums;
+    }
+    .settle-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
+    .settle-sub   { font-size: 13px; color: var(--text-3); margin: 0; }
+    .steps-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 4px 16px; }
+    .live-toast {
+      position: absolute;
+      left: 22px; right: 22px; bottom: 28px;
+      padding: 14px 16px;
+      background: var(--text-1);
+      color: white;
+      border-radius: var(--r-md);
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.4s ease;
+      z-index: 50;
+    }
+    .live-toast.show { opacity: 1; transform: translateY(0); }
+    .live-toast .ic {
+      width: 32px; height: 32px;
+      border-radius: var(--r-full);
+      background: var(--success);
+      display: grid; place-items: center;
+      flex-shrink: 0;
+    }
+    .live-toast .ic svg { width: 18px; height: 18px; color: white; }
+    .live-toast .body { flex: 1; font-size: 13px; line-height: 1.4; }
+    .live-toast .body strong { font-weight: 700; }
+    .live-toast .body a { color: var(--brand-300); text-decoration: underline; font-weight: 500; font-size: 12px; }
+    .restart-btn { position: absolute; top: 60px; right: 18px; font-size: 11px; color: var(--text-3); background: var(--bg); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; cursor: pointer; z-index: 60; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="demo-bar-inner">
+      <a href="index.html" class="demo-brand">
+        <div class="demo-brand-mark">R</div>
+        <span>Raket</span>
+        <span class="demo-tag">demo</span>
+      </a>
+      <div style="position:relative">
+        <button class="demo-nav-btn" onclick="toggleDemoMenu(event)" id="demoBtn" aria-haspopup="menu" aria-expanded="false">
+          <span>Demo flow</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="demo-menu" id="demoMenu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-wrapper">
+    <div class="phone">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="1.5"/><circle cx="9" cy="20" r="1.5"/><circle cx="14" cy="20" r="1.5"/><circle cx="19" cy="20" r="1.5"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.95-3.55a7 7 0 0 1 9.9 0l-1.42 1.42a5 5 0 0 0-7.06 0l-1.42-1.42ZM2.81 10.7a11 11 0 0 1 18.38 0l-1.42 1.42a9 9 0 0 0-15.54 0L2.81 10.7Z"/></svg>
+            <svg width="22" height="11" viewBox="0 0 28 13" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="23" height="12" rx="3"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="currentColor"/><rect x="24.5" y="3.5" width="2.5" height="6" rx="1" fill="currentColor"/></svg>
+          </div>
+        </div>
+
+        <button class="restart-btn" onclick="restart()">↻ Restart</button>
+
+        <div class="content no-tab settle-screen">
+          <div class="settle-hero">
+            <div class="ring-wrap">
+              <div class="ring-bg"></div>
+              <div class="ring-arc" id="ring" style="--p: 0deg"></div>
+              <div class="ring-center" id="ringPct">0%</div>
+            </div>
+            <h2 class="settle-title" id="settleTitle">Settling your payment</h2>
+            <p class="settle-sub" id="settleSub">Stripe to Morph to GCash. Don&rsquo;t close the app.</p>
+          </div>
+
+          <div class="steps-list">
+            <div class="step" id="s0">
+              <div class="step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              </div>
+              <div class="step-text">
+                <div class="step-title">Stripe confirmed</div>
+                <div class="step-meta">+$1,600.00 USD &middot; Acme Northwind</div>
+              </div>
+            </div>
+            <div class="step" id="s1">
+              <div class="step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M5 12h14"/></svg>
+              </div>
+              <div class="step-text">
+                <div class="step-title">Bridging USD to USDC</div>
+                <div class="step-meta">Hot wallet on Morph L2</div>
+              </div>
+            </div>
+            <div class="step" id="s2">
+              <div class="step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 9 4-18 3 9h4"/></svg>
+              </div>
+              <div class="step-text">
+                <div class="step-title">Settled on Morph (~2s)</div>
+                <div class="step-meta" id="hashLine">tx 0xa8c2&middot;&middot;&middot;3f9d &nbsp;<a href="#">View on Explorer ↗</a></div>
+              </div>
+            </div>
+            <div class="step" id="s3">
+              <div class="step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+              </div>
+              <div class="step-text">
+                <div class="step-title">Coins.ph converting</div>
+                <div class="step-meta">USDC to PHP &middot; rate 55.85</div>
+              </div>
+            </div>
+            <div class="step" id="s4">
+              <div class="step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>
+              </div>
+              <div class="step-text">
+                <div class="step-title">Sending via InstaPay</div>
+                <div class="step-meta">To GCash &bull;&bull;&bull;&bull; 1234</div>
+              </div>
+            </div>
+            <div class="step" id="s5">
+              <div class="step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="step-text">
+                <div class="step-title">Delivered to GCash</div>
+                <div class="step-meta">+₱83,685.00 PHP</div>
+              </div>
+            </div>
+          </div>
+
+          <a href="dashboard.html?paid=1" class="btn btn-primary" id="doneBtn" style="margin-top: 18px; opacity: 0; pointer-events: none; transition: opacity 0.4s">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            <span>View on dashboard</span>
+          </a>
+        </div>
+
+        <div class="live-toast" id="toast">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="body">
+            <div><strong>₱83,685 delivered</strong> to GCash &bull;&bull;&bull;&bull; 1234</div>
+            <div style="margin-top:2px; opacity:0.75"><a href="#">View on Morph Explorer</a> &middot; <span style="font-family:'JetBrains Mono',ui-monospace,monospace">5.3s total</span></div>
+          </div>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="demo-caption">
+      <h1>The wow moment — on Maria&rsquo;s phone</h1>
+      <p>Now switching POV: the client paid in their browser; this is what <strong>Maria</strong> sees in her app, live. Stripe paid &rarr; Morph settled &rarr; Coins.ph swapped &rarr; InstaPay delivered. ~5 seconds, end to end. Tap <strong>↻ Restart</strong> to replay.</p>
+    </div>
+  </div>
+
+  <script src="demo-nav.js"></script>
+  <script>
+    lucide.createIcons();
+    const STEPS = 6;
+    const TIMINGS = [400, 1400, 1000, 900, 700, 700];
+    const TITLES  = [
+      ['Settling your payment', 'Stripe to Morph to GCash. Don&rsquo;t close the app.'],
+      ['Bridging on-chain', 'USD card cleared. Sending USDC on Morph.'],
+      ['Bridging on-chain', 'USD card cleared. Sending USDC on Morph.'],
+      ['Off-ramping to peso', 'Coins.ph is swapping USDC to PHP.'],
+      ['Off-ramping to peso', 'InstaPay sending to GCash &bull;&bull;&bull;&bull; 1234.'],
+      ['Done — money delivered', '5.3 seconds, end to end.'],
+    ];
+    let current = 0;
+    function setStep(i) {
+      for (let n = 0; n < STEPS; n++) {
+        const el = document.getElementById('s' + n);
+        el.classList.remove('active', 'done');
+        if (n < i) el.classList.add('done');
+        if (n === i) el.classList.add('active');
+      }
+      const pct = Math.round((i / (STEPS - 1)) * 100);
+      const deg = Math.round((i / (STEPS - 1)) * 360);
+      document.getElementById('ringPct').textContent = pct + '%';
+      document.getElementById('ring').style.setProperty('--p', deg + 'deg');
+      document.getElementById('settleTitle').innerHTML = TITLES[i][0];
+      document.getElementById('settleSub').innerHTML = TITLES[i][1];
+    }
+    function advance() {
+      if (current >= STEPS) {
+        document.querySelectorAll('.step').forEach(s => s.classList.add('done'));
+        document.getElementById('s' + (STEPS - 1)).classList.add('done');
+        document.getElementById('ringPct').textContent = '100%';
+        document.getElementById('ring').style.setProperty('--p', '360deg');
+        document.getElementById('toast').classList.add('show');
+        const btn = document.getElementById('doneBtn');
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+        return;
+      }
+      setStep(current);
+      const wait = TIMINGS[current];
+      current++;
+      setTimeout(advance, wait);
+    }
+    function restart() {
+      current = 0;
+      document.getElementById('toast').classList.remove('show');
+      const btn = document.getElementById('doneBtn');
+      btn.style.opacity = '0';
+      btn.style.pointerEvents = 'none';
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('done', 'active'));
+      setTimeout(advance, 200);
+    }
+    window.restart = restart;
+    advance();
+  </script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pay invoice · Raket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .pay-brand { display: flex; align-items: center; gap: 8px; padding: 10px 0 4px; }
+    .pay-brand .mark { width: 24px; height: 24px; border-radius: 7px; background: linear-gradient(135deg, var(--brand-700), var(--brand-500)); color: white; display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+    .pay-brand .name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+    .pay-brand .tag  { margin-left: auto; font-size: 11px; color: var(--text-3); padding: 3px 8px; background: var(--bg); border-radius: var(--r-full); font-weight: 500; }
+    .pay-from { display: flex; align-items: center; gap: 14px; padding: 16px 0 14px; }
+    .pay-from .from-avatar {
+      width: 48px; height: 48px; border-radius: var(--r-full);
+      background: linear-gradient(135deg, var(--gold-400), var(--brand-700));
+      display: grid; place-items: center;
+      color: white; font-weight: 700; font-size: 18px;
+    }
+    .pay-from .from-text .label { font-size: 12px; color: var(--text-3); }
+    .pay-from .from-text .name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .pay-from .from-text .sub  { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+    .amount-block { padding: 22px 18px 20px; text-align: center; border-radius: var(--r-xl); background: linear-gradient(140deg, #f0fdfa, #ccfbf1); border: 1px solid var(--brand-200); }
+    .amount-block .label { font-size: 12px; color: var(--brand-800); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+    .amount-block .amt { font-size: 44px; font-weight: 800; letter-spacing: -0.04em; color: var(--text-1); margin-top: 4px; font-variant-numeric: tabular-nums; line-height: 1.05; }
+    .amount-block .ccy { font-size: 14px; color: var(--text-2); font-weight: 600; margin-top: 4px; }
+    .meta-card { padding: 14px 16px; }
+    .meta-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px dashed var(--border); }
+    .meta-row:last-child { border-bottom: none; }
+    .meta-row .k { color: var(--text-3); }
+    .meta-row .v { font-weight: 600; }
+    .lineitem { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; font-size: 13px; border-top: 1px dashed var(--border); }
+    .lineitem:first-of-type { border-top: none; }
+    .lineitem .desc { flex: 1; }
+    .lineitem .qty { color: var(--text-3); margin: 0 8px; font-variant-numeric: tabular-nums; }
+    .lineitem .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .trust-row { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 0; font-size: 11px; color: var(--text-3); }
+    .trust-row .item { display: flex; align-items: center; gap: 4px; }
+    .trust-row svg { width: 13px; height: 13px; }
+    .secured { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 0 0; font-size: 11px; color: var(--text-3); }
+    .secured svg { width: 13px; height: 13px; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="demo-bar-inner">
+      <a href="index.html" class="demo-brand">
+        <div class="demo-brand-mark">R</div>
+        <span>Raket</span>
+        <span class="demo-tag">demo</span>
+      </a>
+      <div style="position:relative">
+        <button class="demo-nav-btn" onclick="toggleDemoMenu(event)" id="demoBtn" aria-haspopup="menu" aria-expanded="false">
+          <span>Demo flow</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="demo-menu" id="demoMenu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-wrapper">
+    <div class="phone">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="1.5"/><circle cx="9" cy="20" r="1.5"/><circle cx="14" cy="20" r="1.5"/><circle cx="19" cy="20" r="1.5"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.95-3.55a7 7 0 0 1 9.9 0l-1.42 1.42a5 5 0 0 0-7.06 0l-1.42-1.42ZM2.81 10.7a11 11 0 0 1 18.38 0l-1.42 1.42a9 9 0 0 0-15.54 0L2.81 10.7Z"/></svg>
+            <svg width="22" height="11" viewBox="0 0 28 13" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="23" height="12" rx="3"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="currentColor"/><rect x="24.5" y="3.5" width="2.5" height="6" rx="1" fill="currentColor"/></svg>
+          </div>
+        </div>
+
+        <div class="browser-chrome">
+          <button class="browser-action" aria-label="Tabs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 21h10a2 2 0 0 0 2-2V9"/></svg>
+          </button>
+          <div class="browser-url">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span class="domain">raket.gg</span><span class="path">/pay/1042</span>
+          </div>
+          <button class="browser-action" aria-label="Refresh">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </div>
+
+        <div class="content in-browser" style="padding-top: 12px">
+          <div class="pay-brand">
+            <div class="mark">R</div>
+            <div class="name">Raket</div>
+            <span class="tag">Pay invoice</span>
+          </div>
+
+          <div class="pay-from">
+            <div class="from-avatar">M</div>
+            <div class="from-text">
+              <div class="label">You&rsquo;re paying</div>
+              <div class="name">Maria Santos</div>
+              <div class="sub">Invoice #1042 &middot; Issued May 21, 2026</div>
+            </div>
+          </div>
+
+          <div class="amount-block">
+            <div class="label">Total due</div>
+            <div class="amt tnum">$1,600.00</div>
+            <div class="ccy">USD</div>
+          </div>
+
+          <div class="section-label">Line items</div>
+          <div class="card meta-card">
+            <div class="lineitem">
+              <div class="desc">UI design (Northwind app)</div>
+              <div class="qty">20h &times; $80</div>
+              <div class="amt">$1,600.00</div>
+            </div>
+          </div>
+
+          <div class="section-label">Details</div>
+          <div class="card meta-card">
+            <div class="meta-row"><div class="k">Due by</div><div class="v">Jun 4, 2026</div></div>
+            <div class="meta-row"><div class="k">Terms</div><div class="v">Net 14</div></div>
+            <div class="meta-row"><div class="k">Reference</div><div class="v tnum">RKT-1042</div></div>
+          </div>
+
+          <div style="margin-top:18px">
+            <a href="stripe-checkout.html" class="btn btn-primary" style="font-size: 16px; padding: 16px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              <span>Pay $1,600.00</span>
+            </a>
+            <div class="secured">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span>Payments secured by <strong>Stripe</strong>. Card, Apple Pay, ACH supported.</span>
+            </div>
+          </div>
+
+          <div class="trust-row">
+            <div class="item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Verified business</span>
+            </div>
+            <div class="item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              <span>Auto-receipt</span>
+            </div>
+            <div class="item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>4.9 / 5</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="browser-toolbar">
+          <button aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button class="disabled" aria-label="Forward">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <button aria-label="Share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </button>
+          <button aria-label="Bookmarks">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </button>
+          <button aria-label="Tabs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="14" height="14" rx="2"/><rect x="7" y="7" width="14" height="14" rx="2"/></svg>
+          </button>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="demo-caption">
+      <h1>The client&rsquo;s view — in their browser</h1>
+      <p>The client never installs Raket. The email link opens this page in their phone&rsquo;s browser at <strong>raket.gg/pay/1042</strong>. No account, no signup, no crypto in sight.</p>
+    </div>
+  </div>
+
+  <script src="demo-nav.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

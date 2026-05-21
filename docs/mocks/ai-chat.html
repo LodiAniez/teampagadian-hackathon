@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask your books · Raket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .chat-app-bar {
+      padding: 8px 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .ai-avatar {
+      width: 38px; height: 38px;
+      border-radius: var(--r-full);
+      background: linear-gradient(135deg, var(--brand-700), var(--gold-500));
+      display: grid; place-items: center;
+      color: white;
+      flex-shrink: 0;
+    }
+    .ai-avatar svg { width: 18px; height: 18px; }
+    .chat-app-bar .who { flex: 1; }
+    .chat-app-bar .who .name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .chat-app-bar .who .status { font-size: 11px; color: var(--brand-700); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
+    .chat-app-bar .who .status::before {
+      content: ''; width: 6px; height: 6px;
+      border-radius: var(--r-full);
+      background: var(--success);
+    }
+    .chips {
+      display: flex; gap: 6px;
+      padding: 10px 16px 6px;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0;
+      padding: 7px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-2);
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .chip:hover { border-color: var(--brand-700); color: var(--brand-700); }
+    .conv { padding: 8px 16px 12px; display: flex; flex-direction: column; gap: 14px; }
+    .msg-user {
+      align-self: flex-end;
+      max-width: 80%;
+      padding: 10px 14px;
+      background: var(--brand-700);
+      color: white;
+      border-radius: 18px 18px 4px 18px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .msg-ai {
+      align-self: flex-start;
+      max-width: 92%;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px 18px 18px 4px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text-1);
+    }
+    .msg-ai p { margin: 0 0 8px; }
+    .msg-ai p:last-child { margin-bottom: 0; }
+    .msg-ai strong { font-weight: 600; }
+    .msg-ai .insight {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, rgba(15, 118, 110, 0.05), rgba(251, 191, 36, 0.05));
+      border: 1px solid var(--brand-200);
+      border-radius: var(--r-sm);
+      font-size: 13px;
+      color: var(--text-2);
+    }
+    .msg-ai .insight strong { color: var(--brand-800); }
+    .msg-ai .mini-stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .msg-ai .mini-stat { padding: 8px 10px; background: var(--bg); border-radius: var(--r-sm); }
+    .msg-ai .mini-stat .k { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .msg-ai .mini-stat .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ai-source {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-3);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .ai-source svg { width: 11px; height: 11px; }
+    .composer {
+      position: absolute;
+      left: 12px; right: 12px; bottom: 12px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      border-radius: 0 0 44px 44px;
+      padding: 12px 16px 26px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 30;
+    }
+    .composer-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--bg);
+      font: inherit;
+      font-size: 14px;
+      min-height: 40px;
+    }
+    .composer-input::placeholder { color: var(--text-3); }
+    .composer .send {
+      width: 40px; height: 40px;
+      border-radius: var(--r-full);
+      background: var(--brand-700);
+      color: white;
+      border: none;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .composer .send svg { width: 18px; height: 18px; }
+    .typing {
+      display: inline-flex; gap: 4px; padding: 4px 0;
+    }
+    .typing span {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-3);
+      animation: typing 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="demo-bar-inner">
+      <a href="index.html" class="demo-brand">
+        <div class="demo-brand-mark">R</div>
+        <span>Raket</span>
+        <span class="demo-tag">demo</span>
+      </a>
+      <div style="position:relative">
+        <button class="demo-nav-btn" onclick="toggleDemoMenu(event)" id="demoBtn" aria-haspopup="menu" aria-expanded="false">
+          <span>Demo flow</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="demo-menu" id="demoMenu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-wrapper">
+    <div class="phone">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="1.5"/><circle cx="9" cy="20" r="1.5"/><circle cx="14" cy="20" r="1.5"/><circle cx="19" cy="20" r="1.5"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.95-3.55a7 7 0 0 1 9.9 0l-1.42 1.42a5 5 0 0 0-7.06 0l-1.42-1.42ZM2.81 10.7a11 11 0 0 1 18.38 0l-1.42 1.42a9 9 0 0 0-15.54 0L2.81 10.7Z"/></svg>
+            <svg width="22" height="11" viewBox="0 0 28 13" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="23" height="12" rx="3"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="currentColor"/><rect x="24.5" y="3.5" width="2.5" height="6" rx="1" fill="currentColor"/></svg>
+          </div>
+        </div>
+
+        <div class="chat-app-bar">
+          <a href="dashboard.html" class="icon-btn" aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>
+          </a>
+          <div class="ai-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l1.5 4.5L19 9l-4.5 1.5L13 15l-1.5-4.5L7 9l4.5-1.5z"/><path d="M19 16l.7 2.1L22 19l-2.3.9L19 22l-.7-2.1L16 19l2.3-.9z"/></svg>
+          </div>
+          <div class="who">
+            <div class="name">Ask your books</div>
+            <div class="status">Claude Sonnet 4.6 &middot; live data</div>
+          </div>
+        </div>
+
+        <div class="chips">
+          <a class="chip">How much from US clients this quarter?</a>
+          <a class="chip">Who&rsquo;s my biggest client?</a>
+          <a class="chip">Tax estimate?</a>
+          <a class="chip">When did Acme pay last?</a>
+        </div>
+
+        <div class="content no-tab" style="padding-top: 4px; padding-bottom: 92px;">
+          <div class="conv">
+            <div class="msg-user">How much did I earn from US clients this quarter?</div>
+
+            <div class="msg-ai">
+              <p>You earned <strong>₱287,450</strong> from <strong>5 invoices</strong> to US clients this quarter &mdash; about <strong>59%</strong> of your total income.</p>
+              <div class="mini-stat-row">
+                <div class="mini-stat">
+                  <div class="k">From US</div>
+                  <div class="v">₱287,450</div>
+                </div>
+                <div class="mini-stat">
+                  <div class="k">% of total</div>
+                  <div class="v">59%</div>
+                </div>
+              </div>
+              <div class="ai-source">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"/></svg>
+                <span>From 5 invoices (Acme &times;3, Pixel Forge, Brightwave)</span>
+              </div>
+            </div>
+
+            <div class="msg-user">Who&rsquo;s my biggest client this year?</div>
+
+            <div class="msg-ai">
+              <p><strong>Acme Northwind</strong> &mdash; ₱412,800 across 6 invoices since January. They&rsquo;ve never paid late, average 9 days from invoice to settlement.</p>
+              <div class="insight">
+                <strong>Worth knowing:</strong> Acme is 24% of your YTD revenue. If you&rsquo;re comfortable with that concentration, consider asking about a retainer.
+              </div>
+            </div>
+
+            <div class="msg-user">What&rsquo;s my Q1 tax estimate?</div>
+
+            <div class="msg-ai">
+              <p>Q1 earnings of <strong>₱487,200</strong> &rarr; <strong>₱38,976</strong> in income tax under the 8% election. Due <strong>May 15</strong>.</p>
+              <p style="color:var(--text-3); font-size:13px;">I&rsquo;ve already put a pre-filled 1701Q on your taxes screen. Tap to review.</p>
+              <div class="ai-source">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>Computed from your invoices &middot; 8% election applies if YTD &lt; ₱3M</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="composer">
+          <input class="composer-input" placeholder="Ask anything about your earnings…" value="">
+          <button class="send" aria-label="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="demo-caption">
+      <h1>Ask your books</h1>
+      <p>A conversational view over the freelancer&rsquo;s real data. Claude runs SQL tool-calls under the hood; the prompt chips guarantee the demo lands.</p>
+    </div>
+  </div>
+
+  <script src="demo-nav.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

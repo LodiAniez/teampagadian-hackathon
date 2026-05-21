@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · Raket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .greet { display: flex; align-items: center; gap: 12px; }
+    .greet .name { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+    .greet .sub  { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+    .hero-card {
+      background: linear-gradient(140deg, #0f766e 0%, #134e4a 100%);
+      color: white;
+      border-radius: var(--r-xl);
+      padding: 22px 22px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-card::before {
+      content: '';
+      position: absolute;
+      right: -40px; top: -40px;
+      width: 180px; height: 180px;
+      background: radial-gradient(circle, rgba(251,191,36,0.25), transparent 70%);
+      pointer-events: none;
+    }
+    .hero-card .label { font-size: 13px; color: rgba(255,255,255,0.7); font-weight: 500; letter-spacing: 0.02em; }
+    .hero-card .amount { font-size: 36px; font-weight: 700; letter-spacing: -0.03em; margin-top: 4px; line-height: 1.1; }
+    .hero-card .amount-usd { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .savings-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 14px; padding: 6px 12px;
+      background: rgba(251, 191, 36, 0.18);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      border-radius: var(--r-full);
+      font-size: 12px; font-weight: 600; color: #fde68a;
+    }
+    .savings-chip svg { width: 13px; height: 13px; }
+    .quick-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+    .quick { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); text-decoration: none; color: var(--text-2); }
+    .quick svg { width: 20px; height: 20px; color: var(--brand-700); }
+    .quick span { font-size: 11px; font-weight: 600; }
+    .chart-card { padding: 16px; }
+    .chart-card h3 { font-size: 14px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .chart-card .meta { font-size: 12px; color: var(--text-3); }
+    .month-labels { display: flex; gap: 10px; margin-top: 30px; }
+    .month-labels span { flex: 1; text-align: center; font-size: 10px; color: var(--text-4); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .invoice-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--r-md);
+      text-decoration: none;
+    }
+    .invoice-row .av { width: 36px; height: 36px; border-radius: 10px; background: var(--brand-100); color: var(--brand-800); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .invoice-row .av.pixel { background: #fef3c7; color: #92400e; }
+    .invoice-row .av.bright { background: #ddd6fe; color: #5b21b6; }
+    .invoice-row .av.aurora { background: #e0e7ff; color: #3730a3; }
+    .invoice-row .text { flex: 1; min-width: 0; }
+    .invoice-row .client { font-size: 14px; font-weight: 600; color: var(--text-1); }
+    .invoice-row .desc { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+    .invoice-row .amount { font-size: 14px; font-weight: 700; color: var(--text-1); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+    .fx-card { padding: 16px; }
+    .fx-card h3 { font-size: 14px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .fx-card .meta { font-size: 12px; color: var(--text-3); margin-bottom: 12px; }
+    .fx-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+    .fx-row:last-child { border-bottom: none; }
+    .fx-row .name { font-size: 13px; font-weight: 600; color: var(--text-1); }
+    .fx-row .name .badge-best { font-size: 10px; background: var(--brand-700); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700; letter-spacing: 0.04em; }
+    .fx-row .amt { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .fx-row .delta { font-size: 11px; color: var(--danger); margin-left: 6px; }
+    .fx-row.best .amt { color: var(--brand-700); }
+    .see-all { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; font-size: 13px; font-weight: 600; color: var(--brand-700); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="demo-bar-inner">
+      <a href="index.html" class="demo-brand">
+        <div class="demo-brand-mark">R</div>
+        <span>Raket</span>
+        <span class="demo-tag">demo</span>
+      </a>
+      <div style="position:relative">
+        <button class="demo-nav-btn" onclick="toggleDemoMenu(event)" id="demoBtn" aria-haspopup="menu" aria-expanded="false">
+          <span>Demo flow</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="demo-menu" id="demoMenu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-wrapper">
+    <div class="phone">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="1.5"/><circle cx="9" cy="20" r="1.5"/><circle cx="14" cy="20" r="1.5"/><circle cx="19" cy="20" r="1.5"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.95-3.55a7 7 0 0 1 9.9 0l-1.42 1.42a5 5 0 0 0-7.06 0l-1.42-1.42ZM2.81 10.7a11 11 0 0 1 18.38 0l-1.42 1.42a9 9 0 0 0-15.54 0L2.81 10.7Z"/></svg>
+            <svg width="22" height="11" viewBox="0 0 28 13" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="23" height="12" rx="3"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="currentColor"/><rect x="24.5" y="3.5" width="2.5" height="6" rx="1" fill="currentColor"/></svg>
+          </div>
+        </div>
+
+        <div class="app-bar">
+          <div class="greet">
+            <div class="avatar">M</div>
+            <div>
+              <div class="name">Hi, Maria</div>
+              <div class="sub">Thursday, May 21</div>
+            </div>
+          </div>
+          <div class="app-bar-actions">
+            <a href="#" class="icon-btn" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            </a>
+            <a href="#" class="icon-btn" aria-label="Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="hero-card">
+            <div class="label">Earnings this month</div>
+            <div class="amount tnum">₱247,892</div>
+            <div class="amount-usd">≈ $4,415 USD</div>
+            <div class="savings-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 14-7-7-7 7"/></svg>
+              <span>You saved ₱2,580 vs PayPal</span>
+            </div>
+          </div>
+
+          <div class="quick-row">
+            <a href="invoice-create.html" class="quick">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              <span>Invoice</span>
+            </a>
+            <a href="bir-tax.html" class="quick">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span>Taxes</span>
+            </a>
+            <a href="ai-chat.html" class="quick">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              <span>Ask AI</span>
+            </a>
+            <a href="#" class="quick">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+              <span>Clients</span>
+            </a>
+          </div>
+
+          <div class="section-label">Earnings &middot; last 6 months</div>
+          <div class="card chart-card">
+            <div class="bars">
+              <div class="bar"      style="height: 38%"></div>
+              <div class="bar"      style="height: 52%"></div>
+              <div class="bar"      style="height: 44%"></div>
+              <div class="bar"      style="height: 68%"></div>
+              <div class="bar"      style="height: 58%"></div>
+              <div class="bar tall" style="height: 82%"></div>
+            </div>
+            <div class="month-labels">
+              <span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span>
+            </div>
+          </div>
+
+          <div class="section-label">Recent invoices</div>
+          <div class="list">
+            <a href="invoice-sent.html" class="invoice-row">
+              <div class="av">AN</div>
+              <div class="text">
+                <div class="client">Acme Northwind</div>
+                <div class="desc">#1042 &middot; UI design, 20h</div>
+              </div>
+              <div style="text-align:right">
+                <div class="amount tnum">$1,600</div>
+                <div style="margin-top:4px"><span class="pill pill-sent"><span class="pill-dot"></span>Sent</span></div>
+              </div>
+            </a>
+            <a href="#" class="invoice-row">
+              <div class="av pixel">PF</div>
+              <div class="text">
+                <div class="client">Pixel Forge</div>
+                <div class="desc">#1041 &middot; Landing page</div>
+              </div>
+              <div style="text-align:right">
+                <div class="amount tnum">$850</div>
+                <div style="margin-top:4px"><span class="pill pill-paid"><span class="pill-dot"></span>Paid</span></div>
+              </div>
+            </a>
+            <a href="#" class="invoice-row">
+              <div class="av bright">BW</div>
+              <div class="text">
+                <div class="client">Brightwave Ltd</div>
+                <div class="desc">#1040 &middot; Onboarding flow</div>
+              </div>
+              <div style="text-align:right">
+                <div class="amount tnum">$2,200</div>
+                <div style="margin-top:4px"><span class="pill pill-paid"><span class="pill-dot"></span>Paid</span></div>
+              </div>
+            </a>
+            <a href="#" class="invoice-row">
+              <div class="av aurora">AS</div>
+              <div class="text">
+                <div class="client">Aurora Studio</div>
+                <div class="desc">#1039 &middot; Icon set</div>
+              </div>
+              <div style="text-align:right">
+                <div class="amount tnum">$400</div>
+                <div style="margin-top:4px"><span class="pill pill-draft"><span class="pill-dot"></span>Draft</span></div>
+              </div>
+            </a>
+            <a href="#" class="see-all">See all invoices
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+          </div>
+
+          <div class="section-label">If you used another platform</div>
+          <div class="card fx-card">
+            <div class="meta">What ₱ you&rsquo;d receive on your $1,600 Acme invoice</div>
+            <div class="fx-row best">
+              <div class="name">Raket <span class="badge-best">BEST</span></div>
+              <div><span class="amt tnum">₱89,432</span></div>
+            </div>
+            <div class="fx-row">
+              <div class="name">PayPal</div>
+              <div><span class="amt tnum">₱83,820</span><span class="delta">−₱5,612</span></div>
+            </div>
+            <div class="fx-row">
+              <div class="name">Wise</div>
+              <div><span class="amt tnum">₱88,140</span><span class="delta">−₱1,292</span></div>
+            </div>
+            <div class="fx-row">
+              <div class="name">Bank wire</div>
+              <div><span class="amt tnum">₱82,050</span><span class="delta">−₱7,382</span></div>
+            </div>
+          </div>
+        </div>
+
+        <a href="settlement-animation.html" class="fab" id="demoFab" aria-label="Demo: simulate payment received">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Demo: simulate payment</span>
+        </a>
+
+        <div class="tab-bar">
+          <a href="#" class="tab-item active">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>
+            <span>Home</span>
+          </a>
+          <a href="#" class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>Invoices</span>
+          </a>
+          <a href="invoice-create.html" class="tab-item fab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </a>
+          <a href="#" class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Activity</span>
+          </a>
+          <a href="#" class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+            <span>You</span>
+          </a>
+        </div>
+
+        <div class="toast" id="paidToast" style="display:none">
+          <div class="toast-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="toast-body">
+            <div><strong>₱83,685 delivered</strong> to GCash &bull;&bull;&bull;&bull; 1234</div>
+            <div style="margin-top:2px; color:#a8a29e; font-size:12px">From Acme Northwind &middot; <a href="#">View on Morph Explorer</a></div>
+          </div>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="demo-caption">
+      <h1 id="capTitle">Dashboard</h1>
+      <p id="capDesc">PHP-first earnings, savings vs PayPal, the FX-comparison card that sells the pitch in one glance. Tap the gold <strong>Demo: simulate payment</strong> button to fast-forward the wow moment.</p>
+    </div>
+  </div>
+
+  <script src="demo-nav.js"></script>
+  <script>
+    lucide.createIcons();
+    if (new URLSearchParams(location.search).has('paid')) {
+      document.getElementById('paidToast').style.display = 'flex';
+      document.getElementById('demoFab').style.display = 'none';
+      document.getElementById('capTitle').textContent = 'Dashboard — moments after payment';
+      document.getElementById('capDesc').innerHTML = 'Supabase Realtime pushed the invoice update; the toast at the bottom is the &ldquo;PHP landed in GCash&rdquo; beat. The Explorer link is the on-chain receipt.';
+    }
+  </script>
+</body>
+</html>

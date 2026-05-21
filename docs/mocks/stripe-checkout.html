@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stripe checkout · Raket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .demo-banner {
+      background: #fef3c7;
+      border-bottom: 1px solid #fde68a;
+      padding: 8px 14px;
+      font-size: 11px;
+      color: #92400e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .demo-banner svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .stripe-bar {
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .merchant { display: flex; align-items: center; gap: 10px; }
+    .merchant .logo {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
+      color: white;
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 14px;
+    }
+    .merchant .name { font-size: 14px; font-weight: 600; }
+    .merchant .sub  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+    .stripe-mark {
+      color: #635bff;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: -0.02em;
+    }
+    .pay-amount-display {
+      padding: 24px 18px 18px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .pay-amount-display .label { font-size: 12px; color: var(--text-3); }
+    .pay-amount-display .amt { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-top: 4px; }
+    .pay-amount-display .to  { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+    .method-tabs { display: flex; gap: 8px; padding: 14px 18px 4px; }
+    .method-tab {
+      flex: 1;
+      padding: 10px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-3);
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .method-tab.active { border-color: #635bff; color: #635bff; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
+    .method-tab svg { width: 18px; height: 18px; margin-bottom: 2px; display: block; margin-left: auto; margin-right: auto; }
+    .stripe-form { padding: 12px 18px 8px; }
+    .field-row { margin-bottom: 12px; }
+    .field-row .label { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; display: block; }
+    .field-row .input { font-size: 15px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .card-input { position: relative; }
+    .card-input .brand-mark { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 4px; }
+    .card-brand { width: 30px; height: 20px; border-radius: 4px; background: linear-gradient(90deg, #1a1f71 0%, #1a1f71 50%, #f7b600 50%, #f7b600 100%); }
+    .pay-button-large {
+      background: #635bff;
+      color: white;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      width: 100%;
+      border: none;
+      border-radius: var(--r-md);
+      cursor: pointer;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      margin-top: 6px;
+    }
+    .pay-button-large:hover { background: #5851ea; }
+    .pay-button-large svg { width: 18px; height: 18px; }
+    .stripe-footer { text-align: center; padding: 14px 18px 24px; font-size: 10px; color: var(--text-3); }
+    .stripe-footer .powered { display: inline-flex; align-items: center; gap: 4px; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="demo-bar-inner">
+      <a href="index.html" class="demo-brand">
+        <div class="demo-brand-mark">R</div>
+        <span>Raket</span>
+        <span class="demo-tag">demo</span>
+      </a>
+      <div style="position:relative">
+        <button class="demo-nav-btn" onclick="toggleDemoMenu(event)" id="demoBtn" aria-haspopup="menu" aria-expanded="false">
+          <span>Demo flow</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="demo-menu" id="demoMenu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-wrapper">
+    <div class="phone">
+      <div class="screen" style="background: white">
+        <div class="island"></div>
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="20" r="1.5"/><circle cx="9" cy="20" r="1.5"/><circle cx="14" cy="20" r="1.5"/><circle cx="19" cy="20" r="1.5"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.95-3.55a7 7 0 0 1 9.9 0l-1.42 1.42a5 5 0 0 0-7.06 0l-1.42-1.42ZM2.81 10.7a11 11 0 0 1 18.38 0l-1.42 1.42a9 9 0 0 0-15.54 0L2.81 10.7Z"/></svg>
+            <svg width="22" height="11" viewBox="0 0 28 13" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="23" height="12" rx="3"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="currentColor"/><rect x="24.5" y="3.5" width="2.5" height="6" rx="1" fill="currentColor"/></svg>
+          </div>
+        </div>
+
+        <div class="browser-chrome">
+          <button class="browser-action" aria-label="Tabs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 21h10a2 2 0 0 0 2-2V9"/></svg>
+          </button>
+          <div class="browser-url">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span class="domain">checkout.stripe.com</span><span class="path">/c/pay/cs_test_a1b2c3</span>
+          </div>
+          <button class="browser-action" aria-label="Refresh">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </div>
+
+        <div class="content in-browser" style="padding: 0;">
+        <div class="demo-banner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          <span><strong>Demo:</strong> mock of Stripe Checkout, pre-filled with test card. Real Stripe Checkout opens here for the client.</span>
+        </div>
+
+        <div class="stripe-bar">
+          <div class="merchant">
+            <div class="logo">R</div>
+            <div>
+              <div class="name">Maria Santos</div>
+              <div class="sub">via Raket</div>
+            </div>
+          </div>
+          <div>
+            <a href="pay.html" class="icon-btn" style="width:32px;height:32px" aria-label="Back to invoice">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="pay-amount-display">
+          <div class="label">Pay Maria Santos</div>
+          <div class="amt">$1,600.00</div>
+          <div class="to">Invoice #1042</div>
+        </div>
+
+        <div class="method-tabs">
+          <div class="method-tab active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Card
+          </div>
+          <div class="method-tab">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+            Apple Pay
+          </div>
+          <div class="method-tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9V4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v5"/><path d="M21 9v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9"/><path d="M3 9h18M9 13h6M9 17h3"/></svg>
+            Bank
+          </div>
+        </div>
+
+        <div class="stripe-form">
+          <div class="field-row">
+            <label class="label">Email</label>
+            <input class="input" value="ap@northwind.com" style="font-family:inherit; font-size:14px">
+          </div>
+
+          <div class="field-row">
+            <label class="label">Card information</label>
+            <div class="card-input">
+              <input class="input" value="4242 4242 4242 4242">
+              <div class="brand-mark">
+                <div class="card-brand"></div>
+              </div>
+            </div>
+            <div class="field-grid-2" style="margin-top:8px">
+              <input class="input" value="12 / 30">
+              <input class="input" value="123">
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label class="label">Cardholder name</label>
+            <input class="input" value="Acme Northwind Inc." style="font-family:inherit; font-size:14px">
+          </div>
+
+          <div class="field-row">
+            <label class="label">Country</label>
+            <div class="field-grid-2">
+              <input class="input" value="United States" style="font-family:inherit; font-size:14px">
+              <input class="input" value="90210">
+            </div>
+          </div>
+
+          <a href="settlement-animation.html" class="pay-button-large">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>Pay $1,600.00</span>
+          </a>
+        </div>
+
+        <div class="stripe-footer">
+          <span class="powered">
+            Powered by
+            <strong class="stripe-mark">stripe</strong>
+          </span>
+          <span style="margin: 0 6px">&middot;</span>
+          <a href="#" style="color:var(--text-3)">Terms</a>
+          <span style="margin: 0 6px">&middot;</span>
+          <a href="#" style="color:var(--text-3)">Privacy</a>
+        </div>
+        </div><!-- /content in-browser -->
+
+        <div class="browser-toolbar">
+          <button aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button class="disabled" aria-label="Forward">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <button aria-label="Share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </button>
+          <button aria-label="Bookmarks">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </button>
+          <button aria-label="Tabs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="14" height="14" rx="2"/><rect x="7" y="7" width="14" height="14" rx="2"/></svg>
+          </button>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <div class="demo-caption">
+      <h1>Stripe Checkout — in the client&rsquo;s browser</h1>
+      <p>Tapping Pay on the previous page redirects the client&rsquo;s browser to <strong>checkout.stripe.com</strong>. Stripe hosts the form; Raket never sees the card. Card <strong class="tnum">4242 4242 4242 4242</strong> is pre-filled for the demo.</p>
+    </div>
+  </div>
+
+  <script src="demo-nav.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

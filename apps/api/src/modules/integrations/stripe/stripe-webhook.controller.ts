@@ -22,7 +22,7 @@ interface RawBodyContext {
  * raw body required for signature verification, returns 200 fast and
  * delegates business logic to PaymentsService.
  */
-@Controller("webhooks/stripe")
+@Controller("api/webhooks/stripe")
 export class StripeWebhookController {
   private readonly logger = new Logger(StripeWebhookController.name);
 

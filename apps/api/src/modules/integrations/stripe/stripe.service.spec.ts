@@ -1,9 +1,8 @@
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
-import type Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StripeService } from "./stripe.service";
-import { STRIPE_CLIENT, type StripeClient } from "./stripe.types";
+import { STRIPE_CLIENT, type StripeClient, type WebhookEvent } from "./stripe.types";
 
 describe("StripeService", () => {
   let service: StripeService;
@@ -75,11 +74,12 @@ describe("StripeService", () => {
   describe("constructEvent", () => {
     it("verifies the webhook signature against the configured secret", () => {
       mockConfigGet.mockReturnValue("whsec_test_secret");
-      const fakeEvent: Pick<Stripe.Event, "id" | "type"> = {
+      const fakeEvent: WebhookEvent = {
         id: "evt_1",
         type: "payment_intent.succeeded",
+        data: { object: { foo: "bar" } },
       };
-      vi.mocked(mockStripe.webhooks.constructEvent).mockReturnValueOnce(fakeEvent as Stripe.Event);
+      vi.mocked(mockStripe.webhooks.constructEvent).mockReturnValueOnce(fakeEvent);
 
       const result = service.constructEvent("raw-body", "sig-header");
 

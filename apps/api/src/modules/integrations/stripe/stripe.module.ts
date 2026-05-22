@@ -2,10 +2,14 @@ import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Stripe from "stripe";
 import type { EnvConfig } from "@/common/config/env.schema";
+import { PaymentsModule } from "../../payments/payments.module";
+import { StripeWebhookController } from "./stripe-webhook.controller";
 import { StripeService } from "./stripe.service";
 import { STRIPE_CLIENT, type StripeClient } from "./stripe.types";
 
 @Module({
+  imports: [PaymentsModule],
+  controllers: [StripeWebhookController],
   providers: [
     {
       provide: STRIPE_CLIENT,

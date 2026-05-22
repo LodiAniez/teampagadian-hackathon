@@ -55,10 +55,24 @@ export class StripeWebhookController {
 
     switch (event.type) {
       case "payment_intent.succeeded":
-        await this.payments.handlePaymentSucceeded(toPaymentSucceededEvent(event.data.object));
+        try {
+          await this.payments.handlePaymentSucceeded(toPaymentSucceededEvent(event.data.object));
+        } catch (err) {
+          this.logger.error(
+            `Failed to handle payment_intent.succeeded (event ${event.id}): ${err instanceof Error ? err.message : String(err)}`,
+          );
+          throw err;
+        }
         break;
       case "checkout.session.completed":
-        await this.payments.handleCheckoutCompleted(toCheckoutCompletedEvent(event.data.object));
+        try {
+          await this.payments.handleCheckoutCompleted(toCheckoutCompletedEvent(event.data.object));
+        } catch (err) {
+          this.logger.error(
+            `Failed to handle checkout.session.completed (event ${event.id}): ${err instanceof Error ? err.message : String(err)}`,
+          );
+          throw err;
+        }
         break;
       default:
         this.logger.log(`No handler for ${event.type}; ignoring`);

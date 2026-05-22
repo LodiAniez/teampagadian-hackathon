@@ -1,13 +1,7 @@
 import { z } from "zod";
 import { SupportedCurrencySchema } from "../shared/money";
 
-export const InvoiceStatusSchema = z.enum([
-  "draft",
-  "sent",
-  "paid",
-  "overdue",
-  "void",
-]);
+export const InvoiceStatusSchema = z.enum(["draft", "sent", "paid", "overdue", "void"]);
 export type InvoiceStatus = z.infer<typeof InvoiceStatusSchema>;
 
 export const InvoiceSourceTypeSchema = z.enum(["text", "upload", "manual"]);
@@ -60,13 +54,23 @@ export const ParseInvoiceTextBodySchema = z.object({
 });
 export type ParseInvoiceTextBody = z.infer<typeof ParseInvoiceTextBodySchema>;
 
+export const ParsedInvoiceLineItemSchema = z.object({
+  description: z.string().min(1).max(500),
+  quantity: z.number().positive().nullable(),
+  unit: z.string().max(32).nullable(),
+  rate: z.number().nonnegative().nullable(),
+  amount: z.number().nonnegative().nullable(),
+});
+export type ParsedInvoiceLineItem = z.infer<typeof ParsedInvoiceLineItemSchema>;
+
 export const ParsedInvoiceDraftSchema = z.object({
-  clientName: z.string(),
+  clientName: z.string().nullable(),
   clientEmail: z.string().email().nullable(),
   currency: SupportedCurrencySchema,
   issueDate: z.string().date(),
-  dueDate: z.string().date(),
-  lineItems: z.array(CreateInvoiceLineItemSchema),
+  dueDate: z.string().date().nullable(),
+  lineItems: z.array(ParsedInvoiceLineItemSchema),
+  warnings: z.array(z.string()),
 });
 export type ParsedInvoiceDraft = z.infer<typeof ParsedInvoiceDraftSchema>;
 

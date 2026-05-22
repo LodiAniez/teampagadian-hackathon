@@ -24,7 +24,8 @@ export const EnvSchema = z.object({
 
   JWT_SECRET: z.string().min(32),
 
-  ANTHROPIC_API_KEY: z.string().startsWith("sk-ant-"),
+  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_MODEL: z.string().min(1).default("gemini-2.5-flash"),
 
   RESEND_API_KEY: z.string().startsWith("re_"),
   RESEND_FROM_EMAIL: z.string().email().optional(),

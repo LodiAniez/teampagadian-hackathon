@@ -23,7 +23,8 @@ flowchart LR
     Client([Client<br/>Pays by card]):::actor
 
     subgraph Raket["Raket Platform"]
-        Web[Next.js 15<br/>on Vercel]:::raket
+        Mobile[Expo / React Native<br/>on EAS<br/>freelancer app]:::raket
+        Web[Next.js 15<br/>on Vercel<br/>public /pay only]:::raket
         API[NestJS API<br/>on Railway<br/>holds hot wallet key]:::raket
         DB[(Supabase Postgres<br/>+ Realtime + Auth)]:::raket
     end
@@ -36,11 +37,12 @@ flowchart LR
     Coins[Coins.ph + InstaPay<br/>USDC to PHP to GCash]:::mock
     GCash([Freelancer's GCash<br/>mobile money account]):::actor
 
-    Maria -->|Create invoice, view dashboard| Web
-    Client -->|Open /pay/invoiceId| Web
-    Web <-->|HTTPS| API
+    Maria -->|Create invoice, view dashboard| Mobile
+    Client -->|Open /pay/invoiceId in mobile browser| Web
+    Mobile <-->|HTTPS ts-rest| API
+    Web <-->|HTTPS ts-rest| API
     API <--> DB
-    Web <-->|Realtime subscribe| DB
+    Mobile <-->|Realtime subscribe| DB
 
     Client -->|"Pay $X USD by card"| Stripe
     Stripe -->|"webhook: $X USD received"| API
@@ -122,7 +124,7 @@ flowchart LR
 
 ## 3. Component View
 
-Inside the Raket boxes. Names line up with the modules in `apps/web/src/features/*` and `apps/api/src/modules/*`.
+Inside the Raket boxes. Names line up with the modules in `apps/mobile/src/features/*` (freelancer surfaces), `apps/web/src/features/*` (public `/pay` only), and `apps/api/src/modules/*`.
 
 ```mermaid
 flowchart TB
@@ -130,15 +132,20 @@ flowchart TB
     classDef api fill:#e0e7ff,stroke:#3730a3,color:#312e81
     classDef store fill:#f3e8ff,stroke:#6b21a8,color:#581c87
 
-    subgraph Frontend["Next.js 15 (apps/web)"]
+    subgraph MobileFE["Expo (apps/mobile) — freelancer"]
         direction TB
-        AuthUI[Auth feature<br/>phone OTP + auth-context]:::web
+        AuthUI[Auth feature<br/>phone OTP + expo-secure-store]:::web
         InvoiceUI[Invoice feature<br/>create text/upload/manual]:::web
         DashUI[Dashboard feature<br/>earnings, FX compare, savings]:::web
-        PayPage["/pay/invoiceId<br/>public client page"]:::web
-        ChatUI[AI chat panel<br/>Vercel AI SDK streaming]:::web
+        ChatUI[AI chat screen<br/>RN fetch streaming]:::web
         TaxUI[BIR ITR view<br/>1701Q/1701A PDF + CSV]:::web
-        RealtimeSub[Supabase Realtime<br/>invoice status toast]:::web
+        SettlementUI[Settlement animation<br/>+ money-landed toast]:::web
+        RealtimeSub[Supabase Realtime<br/>payouts subscription]:::web
+    end
+
+    subgraph WebFE["Next.js 15 (apps/web) — client pay"]
+        direction TB
+        PayPage["/pay/invoiceId<br/>public client page<br/>opened in mobile browser"]:::web
     end
 
     subgraph Backend["NestJS API (apps/api)"]
@@ -168,6 +175,7 @@ flowchart TB
     DashUI --> TaxMod
     ChatUI --> ChatMod
     TaxUI --> TaxMod
+    SettlementUI <--> Realtime
     RealtimeSub <--> Realtime
 
     PaymentsMod --> SettlementMod
@@ -192,15 +200,15 @@ The demo path end-to-end. This is the 4-minute on-stage run. Real legs are solid
 ```mermaid
 sequenceDiagram
     autonumber
-    participant C as Client (browser)
-    participant W as Next.js /pay page
+    participant C as Client (mobile browser)
+    participant W as Next.js /pay page<br/>(apps/web)
     participant S as Stripe (USD)
     participant A as NestJS API<br/>(holds hot wallet key)
     participant DB as Postgres
     participant M as Morph L2<br/>(passive USDC ledger)
     participant FX as exchangerate.host
     participant CP as Coins.ph + InstaPay (mocked)
-    participant F as Freelancer dashboard
+    participant F as Freelancer mobile app<br/>(apps/mobile)
 
     C->>W: Open /pay/invoiceId
     W->>A: GET invoice summary
@@ -229,8 +237,8 @@ sequenceDiagram
     A-->>CP: (mocked) Coins.ph detects deposit →<br/>swaps USDC → PHP → InstaPay to GCash
     Note over CP: Animated UI only.<br/>Real Coins.ph integration is post-hackathon.
 
-    DB-->>F: Supabase Realtime push (invoice updated)
-    F-->>F: Toast: "₱83,685 delivered to GCash •••• 1234<br/>[view on Morph Explorer]"
+    DB-->>F: Supabase Realtime push (payouts.insert)
+    F-->>F: Settlement animation + toast:<br/>"₱83,685 delivered to GCash •••• 1234<br/>[view on Morph Explorer]"
 
     Note over S,A: Separately, T+2 later: Stripe pays the $X USD<br/>to Raket's bank account. Operator uses this USD to<br/>refill the hot wallet's USDC float off-platform.
 ```
@@ -390,8 +398,11 @@ The hot-wallet float is the single biggest hackathon-only piece. Decision 13 in 
 flowchart LR
     classDef vendor fill:#f1f5f9,stroke:#475569,color:#0f172a
 
+    subgraph EAS["Expo / EAS"]
+        MobileDeploy[Expo React Native<br/>iOS via Expo Go / TestFlight<br/>Android via APK]:::vendor
+    end
     subgraph Vercel["Vercel"]
-        WebDeploy[Next.js web]:::vendor
+        WebDeploy[Next.js web<br/>public /pay only]:::vendor
     end
     subgraph Railway["Railway"]
         ApiDeploy[NestJS api]:::vendor
@@ -413,10 +424,11 @@ flowchart LR
         FxS[exchangerate.host]:::vendor
     end
 
+    MobileDeploy <--> ApiDeploy
     WebDeploy <--> ApiDeploy
     ApiDeploy <--> Pg
     ApiDeploy <--> SbAuth
-    WebDeploy <--> SbRt
+    MobileDeploy <--> SbRt
     ApiDeploy --> Rpc
     Rpc --> Usdc
     ApiDeploy --> StripeS
@@ -435,5 +447,5 @@ flowchart LR
 - Product context: [`prd.md`](./prd.md)
 - API contracts (the wire): [`api-contract-convention.md`](./api-contract-convention.md)
 - API service layout: [`api-convention.md`](./api-convention.md)
-- Frontend feature layout: [`web-convention.md`](./web-convention.md)
+- Mobile feature layout: [`mobile-convention.md`](./mobile-convention.md)
 - Local dev setup: [`ONBOARDING.md`](./ONBOARDING.md)

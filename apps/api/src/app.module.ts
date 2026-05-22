@@ -5,6 +5,7 @@ import { HealthModule } from "./common/health/health.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { FxModule } from "./modules/integrations/fx/fx.module";
+import { StripeModule } from "./modules/integrations/stripe/stripe.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 
 @Module({
@@ -15,6 +16,7 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
     HealthModule,
     AuthModule,
     FxModule,
+    StripeModule,
     InvoicesModule,
   ],
 })

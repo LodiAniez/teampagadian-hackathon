@@ -284,7 +284,61 @@ flowchart LR
 
 ---
 
-## 6. Data Model
+## 6. Invoice Send Orchestration
+
+The bridge between §5 (the freelancer hitting Send on the review form) and §4 (the client opening `/pay/[id]`). `POST /api/invoices/:id/send` is the orchestrator (TEA-37); the three side effects fan out in parallel because they're independent — a transient QR failure shouldn't block the email, and a Resend timeout shouldn't block the Stripe session.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Maria as Freelancer<br/>(mobile)
+    participant Mob as Mobile app<br/>(apps/mobile)
+    participant API as NestJS API<br/>(InvoiceMod + EmailMod)
+    participant DB as Postgres
+    participant Stripe as Stripe API
+    participant QR as QR util
+    participant Resend as Resend
+    participant Inbox as Client email
+
+    Maria->>Mob: Tap "Send" on review form
+    Mob->>API: POST /api/invoices/:id/send
+    activate API
+
+    API->>DB: UPDATE invoices SET status='SENT',<br/>share_token = opaque
+    DB-->>API: ok
+
+    par Stripe Checkout Session
+        API->>Stripe: checkout.sessions.create<br/>(amount, currency, metadata.invoice_id)
+        Stripe-->>API: checkout_url + payment_intent_id
+        API->>DB: UPDATE invoices SET<br/>stripe_payment_intent_id
+    and QR generation
+        API->>QR: encode raket.gg/pay/token
+        QR-->>API: PNG (base64)
+    and Email dispatch
+        API->>Resend: emails.send<br/>(template, Pay Now URL, QR)
+        Resend-->>API: email_id
+    end
+
+    API-->>Mob: invoiceId, shareUrl,<br/>qrPngBase64, status SENT
+    deactivate API
+    Mob->>Mob: Navigate to invoice-sent screen<br/>(copy link / show QR / view email)
+    Mob->>Mob: Invalidate invoices +<br/>dashboard TanStack caches
+
+    Note over Resend,Inbox: Async — typically under 5s
+    Resend->>Inbox: Deliver email
+    Inbox-->>Inbox: Client taps "Pay Now"
+    Note over Inbox: From here §4 takes over —<br/>Stripe Checkout → webhook → settlement
+```
+
+**Same URL, two surfaces.** The Stripe Checkout URL is what the email's Pay Now button AND the `/pay/[token]` page redirect to. The share token is the stable, scannable identifier; the underlying Stripe session is what actually collects the card.
+
+**Idempotency.** Re-sending the same invoice (e.g. "Resend email") reuses the existing Checkout Session if not yet paid — doesn't create a new one. This keeps the eventual `payment_intent.succeeded` webhook unambiguously tied to one invoice.
+
+**Failure modes.** Each parallel leg is independent: Stripe outage = the freelancer still gets a `qrPngBase64` and `shareUrl` (pay page renders the invoice but the Pay button is disabled with a retry banner); Resend outage = the freelancer still has QR + copy-link to share manually; QR codec failure = email + link still work. Only a DB write failure aborts the whole send.
+
+---
+
+## 7. Data Model
 
 From §7 of `prd.md`. One user owns clients, invoices, payout methods. Invoices fan out to line items, payments, payouts.
 
@@ -372,7 +426,7 @@ erDiagram
 
 ---
 
-## 7. What's Real vs Mocked
+## 8. What's Real vs Mocked
 
 Pulled from §5 and §13 of `prd.md` — call this out explicitly so reviewers can see the seam between hackathon scaffolding and the production path.
 
@@ -392,7 +446,7 @@ The hot-wallet float is the single biggest hackathon-only piece. Decision 13 in 
 
 ---
 
-## 8. Deployment Topology
+## 9. Deployment Topology
 
 ```mermaid
 flowchart LR
@@ -442,7 +496,7 @@ flowchart LR
 
 ---
 
-## 9. Cross-References
+## 10. Cross-References
 
 - Product context: [`prd.md`](./prd.md)
 - API contracts (the wire): [`api-contract-convention.md`](./api-contract-convention.md)

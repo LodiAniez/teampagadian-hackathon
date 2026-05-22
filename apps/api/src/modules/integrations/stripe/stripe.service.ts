@@ -10,7 +10,6 @@ export class StripeService {
 
   constructor(
     @Inject(STRIPE_CLIENT) private readonly stripe: StripeClient,
-    @Inject(ConfigService)
     private readonly config: ConfigService<EnvConfig, true>,
   ) {}
 

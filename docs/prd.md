@@ -261,7 +261,7 @@ payouts (id, payment_id, payout_method_id, amount_php, status, external_txn_id)
 
 - **Stripe:** Payment Intents (test mode), Webhooks (`payment_intent.succeeded`), polling fallback every 10s
 - **Morph Hoodi Testnet:** Chain ID `2910`, RPC `https://rpc-hoodi.morph.network`, Explorer `https://explorer-hoodi.morph.network`
-- **USDC on Morph Hoodi:** `0x1178341838B764dCfFA5BCEAb1d41443Fd71a227` — hot wallet sends ERC20 transfer via `viem.writeContract()` (standard ERC20 `transfer(address,uint256)` ABI) + `waitForTransactionReceipt()`
+- **USDC on Morph Hoodi:** `<NEW_ADDRESS>` (mock ERC20, 6 decimals, mintable — deployed by team for testnet demo; replace with actual address after Remix deploy) — hot wallet sends ERC20 transfer via `viem.writeContract()` (standard ERC20 `transfer(address,uint256)` ABI) + `waitForTransactionReceipt()`
 - **Coins.ph + InstaPay:** Mocked — animated UI sequence only. Real integration is post-hackathon.
 - **Supabase Realtime:** Subscribed to `invoices` table — pushes paid status to frontend for instant toast
 - **Claude API:** Messages API with tools, vision for quotation parsing
@@ -341,7 +341,11 @@ If team is 3: drop Person D, distribute their work, but assign one explicit demo
 - [ ] Confirm whether sponsor APIs (e.g., GCash, Maya) are available to integrate as bonus points
 - [ ] Fund hot wallet with Morph Hoodi testnet USDC before hour 10 — assign one team member as wallet owner
 - [ ] Register Stripe webhook against Railway production URL before demo day
-- [x] ~~Confirm USDC contract address on Morph testnet~~ → `0x1178341838B764dCfFA5BCEAb1d41443Fd71a227`
+- [ ] Deploy mock ERC20 (6 decimals, mintable) on Morph Hoodi via Remix → replace every `<NEW_ADDRESS>` in this file (search it) + set `MORPH_USDC_CONTRACT_ADDRESS` in Railway env vars
+  - Contract: `ERC20("USD Coin", "USDC")` with `decimals() = 6` and a public `mint(address, uint256)` function
+  - After deploy: call `mint(<hot-wallet-address>, 1000000000000)` → gives hot wallet 1,000,000 USDC (6 decimals)
+  - Verify balance on Explorer: `https://explorer-hoodi.morph.network/address/<hot-wallet-address>`
+  - Re-mint anytime if the hot wallet runs low — eliminates the "hot wallet drained" risk from §9
 - [x] ~~Confirm Morph testnet RPC~~ → `https://rpc-hoodi.morph.network` (chain `2910`)
 
 ---

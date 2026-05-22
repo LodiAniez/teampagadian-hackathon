@@ -261,7 +261,7 @@ payouts (id, payment_id, payout_method_id, amount_php, status, external_txn_id)
 
 - **Stripe:** Payment Intents (test mode), Webhooks (`payment_intent.succeeded`), polling fallback every 10s
 - **Morph Hoodi Testnet:** Chain ID `2910`, RPC `https://rpc-hoodi.morph.network`, Explorer `https://explorer-hoodi.morph.network`
-- **USDC on Morph Hoodi:** `<NEW_ADDRESS>` (mock ERC20, 6 decimals, mintable — deployed by team for testnet demo; replace with actual address after Remix deploy) — hot wallet sends ERC20 transfer via `viem.writeContract()` (standard ERC20 `transfer(address,uint256)` ABI) + `waitForTransactionReceipt()`
+- **USDC on Morph Hoodi:** [`0x4f7b6bdd0aa93DfA43cc441db0E39b51dAa4bF4D`](https://explorer-hoodi.morph.network/address/0x4f7b6bdd0aa93DfA43cc441db0E39b51dAa4bF4D) (mock ERC20, 6 decimals, mintable — deployed by team for testnet demo) — hot wallet sends ERC20 transfer via `viem.writeContract()` (standard ERC20 `transfer(address,uint256)` ABI) + `waitForTransactionReceipt()`
 - **Coins.ph + InstaPay:** Mocked — animated UI sequence only. Real integration is post-hackathon.
 - **Supabase Realtime:** Subscribed to `invoices` table — pushes paid status to frontend for instant toast
 - **Claude API:** Messages API with tools, vision for quotation parsing
@@ -339,9 +339,9 @@ If team is 3: drop Person D, distribute their work, but assign one explicit demo
 - [ ] Verify current BIR rates (8% income tax option, percentage tax, deadlines for Q1/Q2 2026)
 - [ ] Decide demo persona name and final brand details before hour 6
 - [ ] Confirm whether sponsor APIs (e.g., GCash, Maya) are available to integrate as bonus points
-- [ ] Fund hot wallet with Morph Hoodi testnet USDC before hour 10 — assign one team member as wallet owner
+- [x] ~~Fund hot wallet with Morph Hoodi testnet USDC before hour 10 — assign one team member as wallet owner~~ → hot wallet [`0xaADCAdA39ad00d13C77738902D38b0626A3A6f1F`](https://explorer-hoodi.morph.network/address/0xaADCAdA39ad00d13C77738902D38b0626A3A6f1F) seeded with 1,999,990 mock USDC (TEA-75)
 - [ ] Register Stripe webhook against Railway production URL before demo day
-- [ ] Deploy mock ERC20 (6 decimals, mintable) on Morph Hoodi via Remix → replace every `<NEW_ADDRESS>` in this file (search it) + set `MORPH_USDC_CONTRACT_ADDRESS` in Railway env vars
+- [x] ~~Deploy mock ERC20 (6 decimals, mintable) on Morph Hoodi via Remix → replace every `<NEW_ADDRESS>` in this file (search it) + set `MORPH_USDC_CONTRACT_ADDRESS` in Railway env vars~~ → deployed at [`0x4f7b…bF4D`](https://explorer-hoodi.morph.network/address/0x4f7b6bdd0aa93DfA43cc441db0E39b51dAa4bF4D); Railway env vars set (TEA-75)
   - Contract: `ERC20("USD Coin", "USDC")` with `decimals() = 6` and a public `mint(address, uint256)` function
   - After deploy: call `mint(<hot-wallet-address>, 1000000000000)` → gives hot wallet 1,000,000 USDC (6 decimals)
   - Verify balance on Explorer: `https://explorer-hoodi.morph.network/address/<hot-wallet-address>`

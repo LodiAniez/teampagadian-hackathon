@@ -118,6 +118,7 @@ model Invoice {
   id                      String            @id @default(uuid()) @db.Uuid
   userId                  String            @map("user_id") @db.Uuid
   clientId                String            @map("client_id") @db.Uuid
+  number                  String
   status                  InvoiceStatus     @default(draft)
   amount                  Decimal           @db.Decimal(18, 2)
   currency                String            @db.VarChar(3)
@@ -136,7 +137,9 @@ model Invoice {
   lineItems InvoiceLineItem[]
   payments  Payment[]
 
+  @@unique([userId, number])
   @@index([userId, createdAt])
+  @@index([userId, status])
   @@index([clientId])
   @@index([status])
   @@map("invoices")

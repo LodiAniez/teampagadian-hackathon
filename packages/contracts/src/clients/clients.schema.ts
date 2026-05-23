@@ -7,7 +7,8 @@ export const ClientSchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email().nullable(),
   country: z.string().length(2).nullable(),
-  defaultCurrency: SupportedCurrencySchema.nullable(),
+  defaultCurrency: SupportedCurrencySchema,
   createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
 });
 export type Client = z.infer<typeof ClientSchema>;

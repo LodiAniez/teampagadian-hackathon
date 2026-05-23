@@ -10,6 +10,7 @@ const validClient = {
   country: "US",
   defaultCurrency: "USD",
   createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-02T00:00:00.000Z",
 } satisfies z.input<typeof ClientSchema>;
 
 describe("ClientSchema", () => {
@@ -17,15 +18,18 @@ describe("ClientSchema", () => {
     expect(() => ClientSchema.parse(validClient)).not.toThrow();
   });
 
-  it("accepts null for email, country, and defaultCurrency", () => {
+  it("accepts null for email and country", () => {
     expect(() =>
       ClientSchema.parse({
         ...validClient,
         email: null,
         country: null,
-        defaultCurrency: null,
       }),
     ).not.toThrow();
+  });
+
+  it("rejects defaultCurrency: null (non-null in DB)", () => {
+    expect(() => ClientSchema.parse({ ...validClient, defaultCurrency: null })).toThrow();
   });
 
   it("rejects an invalid email", () => {
@@ -47,6 +51,11 @@ describe("ClientSchema", () => {
   it("rejects a Client missing createdAt", () => {
     const { createdAt: _, ...withoutCreatedAt } = validClient;
     expect(() => ClientSchema.parse(withoutCreatedAt)).toThrow();
+  });
+
+  it("rejects a Client missing updatedAt", () => {
+    const { updatedAt: _, ...withoutUpdatedAt } = validClient;
+    expect(() => ClientSchema.parse(withoutUpdatedAt)).toThrow();
   });
 
   it("rejects a non-UUID id", () => {

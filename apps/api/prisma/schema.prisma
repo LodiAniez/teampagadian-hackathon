@@ -55,10 +55,19 @@ model OtpChallenge {
 // Payout methods
 // ---------------------------------------------------------------------------
 
+enum PayoutMethodType {
+  CARD         @map("card")
+  GCASH        @map("gcash")
+  MAYA         @map("maya")
+  BANK_ACCOUNT @map("bank_account")
+
+  @@map("payout_method_type")
+}
+
 model PayoutMethod {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  type      String // "card" | "gcash" | "maya" | "bank" (extensible)
+  id        String          @id @default(uuid()) @db.Uuid
+  userId    String          @map("user_id") @db.Uuid
+  type      PayoutMethodType
   details   Json
   isDefault Boolean  @default(false) @map("is_default")
   createdAt DateTime @default(now()) @map("created_at")

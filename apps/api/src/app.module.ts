@@ -8,6 +8,7 @@ import { FxModule } from "./modules/integrations/fx/fx.module";
 import { GeminiModule } from "./modules/integrations/gemini/gemini.module";
 import { StripeModule } from "./modules/integrations/stripe/stripe.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
+import { PaymentsModule } from "./modules/payments/payments.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
     AuthModule,
     FxModule,
     StripeModule,
+    PaymentsModule,
     InvoicesModule,
   ],
 })

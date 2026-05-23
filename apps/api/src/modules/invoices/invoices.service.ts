@@ -71,6 +71,22 @@ export class InvoicesService {
   }
 
   async create(userId: string, body: CreateInvoiceBody): Promise<Invoice> {
+    // Two concurrent creates can pick the same INV-YYYY-NNNN before either commits;
+    // the second hits @@unique([userId, number]) → P2002. One retry recomputes
+    // MAX(suffix)+1 (now including the winner) and gets the next number. For
+    // stronger guarantees under heavy contention, move to a sequence table with
+    // SELECT ... FOR UPDATE — see "should-fix" #3 in the TEA-31 review.
+    try {
+      return await this.tryCreate(userId, body);
+    } catch (err) {
+      if (isInvoiceNumberConflict(err)) {
+        return this.tryCreate(userId, body);
+      }
+      throw err;
+    }
+  }
+
+  private tryCreate(userId: string, body: CreateInvoiceBody): Promise<Invoice> {
     return this.prisma.$transaction(async (tx) => {
       const client = await this.resolveClient(tx, userId, body);
       const number = await this.nextInvoiceNumber(tx, userId, body.issueDate);
@@ -184,4 +200,16 @@ export class InvoicesService {
   async void(_userId: string, _invoiceId: string): Promise<Invoice> {
     throw new NotImplementedException("void: implement state transition + idempotency");
   }
+}
+
+function isInvoiceNumberConflict(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (err.code !== "P2002") return false;
+  // Prisma reports target as string[] (field names) or string (constraint name)
+  // depending on driver/version. Match the `number` column either way; we don't
+  // retry on other unique violations so unrelated bugs still bubble.
+  const target = err.meta?.target;
+  if (Array.isArray(target)) return target.includes("number");
+  if (typeof target === "string") return target.includes("number");
+  return false;
 }

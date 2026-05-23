@@ -17,6 +17,7 @@ describe("lib/env", () => {
     delete process.env.EXPO_PUBLIC_SUPABASE_URL;
     delete process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     delete process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    delete process.env.EXPO_PUBLIC_DEV_BEARER;
   });
 
   afterEach(() => {
@@ -48,6 +49,18 @@ describe("lib/env", () => {
     Object.assign(process.env, VALID_ENV);
     delete process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     await expect(import("./env")).rejects.toThrow(/EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY/);
+  });
+
+  it("treats EXPO_PUBLIC_DEV_BEARER as optional and exposes it when set", async () => {
+    Object.assign(process.env, VALID_ENV, { EXPO_PUBLIC_DEV_BEARER: "eyJhbGciOi.devjwt.sig" });
+    const { env } = await import("./env");
+    expect(env.EXPO_PUBLIC_DEV_BEARER).toBe("eyJhbGciOi.devjwt.sig");
+  });
+
+  it("boots without EXPO_PUBLIC_DEV_BEARER and leaves it undefined", async () => {
+    Object.assign(process.env, VALID_ENV);
+    const { env } = await import("./env");
+    expect(env.EXPO_PUBLIC_DEV_BEARER).toBeUndefined();
   });
 
   it("aggregates multiple missing variables into a single error message", async () => {

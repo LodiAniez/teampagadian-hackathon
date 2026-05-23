@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  NotImplementedException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException, NotImplementedException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import type { Client as ClientRow } from "@prisma/client";
 import type {
@@ -41,6 +36,8 @@ export class InvoicesService {
         ...(query.status ? { status: query.status } : {}),
         ...(query.clientId ? { clientId: query.clientId } : {}),
       },
+      // Embedding the full client per row inflates payload when one client owns many
+      // invoices; revisit (clientId + included.clients[]) if list pages get large.
       include: { client: true, lineItems: { orderBy: { position: "asc" } } },
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -132,6 +129,9 @@ export class InvoicesService {
     userId: string,
     body: CreateInvoiceBody,
   ): Promise<ClientRow> {
+    // clientEmail / clientCountry on the body are snapshotted onto a *newly created*
+    // client only — they are intentionally NOT used to update an existing client
+    // matched by id or by name. Editing a client is a separate concern.
     if (body.clientId) {
       const found = await tx.client.findFirst({
         where: { id: body.clientId, userId },
@@ -144,8 +144,9 @@ export class InvoicesService {
 
     const clientName = body.clientName;
     if (!clientName) {
-      // Refine on the schema should have caught this; defensive guard.
-      throw new BadRequestException("Either clientId or clientName is required");
+      // Unreachable: the contract's XOR refine guarantees one of clientId/clientName
+      // is set. If we get here something is wired wrong, not a user input error.
+      throw new Error("Invariant: clientId or clientName must be present after refine");
     }
 
     const existing = await tx.client.findFirst({
@@ -161,6 +162,8 @@ export class InvoicesService {
         name: clientName,
         email: body.clientEmail ?? null,
         country: body.clientCountry ?? null,
+        // Snapshot of the first invoice's currency. Subsequent invoices in other
+        // currencies won't update this; treat it as the client's preferred default.
         defaultCurrency: body.currency,
       },
     });

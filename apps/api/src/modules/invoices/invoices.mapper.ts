@@ -1,12 +1,21 @@
-import type { Invoice, InvoiceLineItem } from "@raket/contracts";
+import type { Client, Invoice, InvoiceLineItem, SupportedCurrency } from "@raket/contracts";
 import type {
+  Client as ClientRow,
   Invoice as InvoiceRow,
   InvoiceLineItem as InvoiceLineItemRow,
 } from "@prisma/client";
 
-export type InvoiceRowWithLineItems = InvoiceRow & {
+export type InvoiceRowWithClientAndLineItems = InvoiceRow & {
+  client: ClientRow;
   lineItems: InvoiceLineItemRow[];
 };
+
+function asSupportedCurrency(currency: string): SupportedCurrency {
+  if (currency !== "USD" && currency !== "EUR" && currency !== "GBP" && currency !== "PHP") {
+    throw new Error(`Unsupported currency in DB row: ${currency}`);
+  }
+  return currency;
+}
 
 function toLineItemDto(row: InvoiceLineItemRow): InvoiceLineItem {
   return {
@@ -23,18 +32,28 @@ function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function toInvoiceDto(row: InvoiceRowWithLineItems): Invoice {
-  const currency = row.currency;
-  if (currency !== "USD" && currency !== "EUR" && currency !== "GBP" && currency !== "PHP") {
-    throw new Error(`Unsupported currency in DB row: ${currency}`);
-  }
+export function toClientDto(row: ClientRow): Client {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.name,
+    email: row.email,
+    country: row.country,
+    defaultCurrency: asSupportedCurrency(row.defaultCurrency),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
 
+export function toInvoiceDto(row: InvoiceRowWithClientAndLineItems): Invoice {
   return {
     id: row.id,
     clientId: row.clientId,
+    client: toClientDto(row.client),
+    number: row.number,
     status: row.status,
     amount: Number(row.amount),
-    currency,
+    currency: asSupportedCurrency(row.currency),
     issueDate: isoDate(row.issueDate),
     dueDate: isoDate(row.dueDate),
     sourceType: row.sourceType,

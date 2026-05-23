@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ClientSchema } from "../clients/clients.schema";
 import { SupportedCurrencySchema } from "../shared/money";
 
 export const InvoiceStatusSchema = z.enum(["draft", "sent", "paid", "overdue", "void"]);
@@ -20,6 +21,8 @@ export type InvoiceLineItem = z.infer<typeof InvoiceLineItemSchema>;
 export const InvoiceSchema = z.object({
   id: z.string().uuid(),
   clientId: z.string().uuid(),
+  client: ClientSchema,
+  number: z.string(),
   status: InvoiceStatusSchema,
   amount: z.number().nonnegative(),
   currency: SupportedCurrencySchema,
@@ -38,14 +41,21 @@ export const CreateInvoiceLineItemSchema = InvoiceLineItemSchema.omit({
 });
 export type CreateInvoiceLineItem = z.infer<typeof CreateInvoiceLineItemSchema>;
 
-export const CreateInvoiceBodySchema = z.object({
-  clientId: z.string().uuid(),
-  currency: SupportedCurrencySchema,
-  issueDate: z.string().date(),
-  dueDate: z.string().date(),
-  sourceType: InvoiceSourceTypeSchema,
-  lineItems: z.array(CreateInvoiceLineItemSchema).min(1),
-});
+export const CreateInvoiceBodySchema = z
+  .object({
+    clientId: z.string().uuid().optional(),
+    clientName: z.string().min(1).max(200).optional(),
+    clientEmail: z.string().email().optional(),
+    clientCountry: z.string().length(2).optional(),
+    currency: SupportedCurrencySchema,
+    issueDate: z.string().date(),
+    dueDate: z.string().date(),
+    sourceType: InvoiceSourceTypeSchema,
+    lineItems: z.array(CreateInvoiceLineItemSchema).min(1),
+  })
+  .refine((d) => d.clientId !== undefined || d.clientName !== undefined, {
+    message: "Either clientId or clientName is required",
+  });
 export type CreateInvoiceBody = z.infer<typeof CreateInvoiceBodySchema>;
 
 export const ParseInvoiceTextBodySchema = z.object({

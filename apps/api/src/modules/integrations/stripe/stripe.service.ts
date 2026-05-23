@@ -1,8 +1,12 @@
 import { Inject, Injectable, InternalServerErrorException, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type Stripe from "stripe";
 import type { EnvConfig } from "@/common/config/env.schema";
-import { STRIPE_CLIENT, type SetupIntentResult, type StripeClient } from "./stripe.types";
+import {
+  STRIPE_CLIENT,
+  type SetupIntentResult,
+  type StripeClient,
+  type WebhookEvent,
+} from "./stripe.types";
 
 @Injectable()
 export class StripeService {
@@ -39,16 +43,16 @@ export class StripeService {
   }
 
   /**
-   * Verifies a Stripe webhook payload's signature and returns the typed event.
-   * Caller (TEA-40 webhook controller, same slice) is responsible for mapping
-   * the Stripe.Event union to a domain shape before passing to other slices —
-   * per docs/api-convention.md §8.
+   * Verifies a Stripe webhook payload's signature and returns a narrow event
+   * envelope ({ id, type, data: { object: unknown } }). The webhook controller
+   * (TEA-40, same slice) Zod-validates `data.object` per event type before
+   * passing a domain shape to other slices — per docs/api-convention.md §8.
    *
    * Throws InternalServerError if STRIPE_WEBHOOK_SECRET is missing. Stripe's
    * own signature-verification error propagates as-is; the webhook controller
    * should catch it and return 400.
    */
-  constructEvent(rawBody: Buffer | string, signature: string): Stripe.Event {
+  constructEvent(rawBody: Buffer | string, signature: string): WebhookEvent {
     const secret = this.config.get("STRIPE_WEBHOOK_SECRET", { infer: true });
     if (!secret) {
       throw new InternalServerErrorException(

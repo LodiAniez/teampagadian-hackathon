@@ -10,7 +10,7 @@ function baseEnv(): Record<string, string> {
     SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
     STRIPE_SECRET_KEY: "sk_test_123",
     JWT_SECRET: "a-very-long-secret-key-that-is-at-least-32-chars",
-    ANTHROPIC_API_KEY: "sk-ant-test",
+    GEMINI_API_KEY: "test-gemini-key",
     RESEND_API_KEY: "re_test",
     NEXT_PUBLIC_APP_URL: "https://app.example.com",
   };

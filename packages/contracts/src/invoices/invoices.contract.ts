@@ -1,10 +1,7 @@
 import { initContract } from "@ts-rest/core";
 import { z } from "zod";
 import { ErrorResponseSchema } from "../shared/error";
-import {
-  PaginatedResponseSchema,
-  PaginationQuerySchema,
-} from "../shared/pagination";
+import { PaginatedResponseSchema, PaginationQuerySchema } from "../shared/pagination";
 import {
   CreateInvoiceBodySchema,
   InvoiceSchema,
@@ -66,8 +63,9 @@ export const invoicesContract = c.router(
         200: ParsedInvoiceDraftSchema,
         401: ErrorResponseSchema,
         422: ErrorResponseSchema,
+        500: ErrorResponseSchema,
       },
-      summary: "Parse a plain-text description into an invoice draft via Claude",
+      summary: "Parse a plain-text description into an invoice draft via Gemini",
     },
     send: {
       method: "POST",

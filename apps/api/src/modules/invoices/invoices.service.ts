@@ -11,6 +11,7 @@ import type {
   SendInvoiceResponse,
 } from "@raket/contracts";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { InvoiceParserService } from "./invoice-parser.service";
 import { toInvoiceDto } from "./invoices.mapper";
 
 type ListQuery = {
@@ -22,7 +23,10 @@ type ListQuery = {
 
 @Injectable()
 export class InvoicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly invoiceParser: InvoiceParserService,
+  ) {}
 
   async list(userId: string, query: ListQuery): Promise<PaginatedResponse<Invoice>> {
     const rows = await this.prisma.invoice.findMany({
@@ -93,10 +97,8 @@ export class InvoicesService {
     return toInvoiceDto(created);
   }
 
-  async parseText(_userId: string, _body: ParseInvoiceTextBody): Promise<ParsedInvoiceDraft> {
-    throw new NotImplementedException(
-      "parseText: implement against Claude — see M3 in Linear",
-    );
+  async parseText(_userId: string, body: ParseInvoiceTextBody): Promise<ParsedInvoiceDraft> {
+    return this.invoiceParser.parse(body.text, body.defaultCurrency);
   }
 
   async send(

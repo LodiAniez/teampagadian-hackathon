@@ -18,6 +18,7 @@ describe("lib/env", () => {
     delete process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     delete process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     delete process.env.EXPO_PUBLIC_DEV_BEARER;
+    delete process.env.EXPO_PUBLIC_DEV_BYPASS_AUTH;
   });
 
   afterEach(() => {
@@ -61,6 +62,17 @@ describe("lib/env", () => {
     Object.assign(process.env, VALID_ENV);
     const { env } = await import("./env");
     expect(env.EXPO_PUBLIC_DEV_BEARER).toBeUndefined();
+  });
+
+  it("accepts EXPO_PUBLIC_DEV_BYPASS_AUTH as 'true' or 'false'", async () => {
+    Object.assign(process.env, VALID_ENV, { EXPO_PUBLIC_DEV_BYPASS_AUTH: "true" });
+    const { env } = await import("./env");
+    expect(env.EXPO_PUBLIC_DEV_BYPASS_AUTH).toBe("true");
+  });
+
+  it("rejects EXPO_PUBLIC_DEV_BYPASS_AUTH values other than 'true'/'false'", async () => {
+    Object.assign(process.env, VALID_ENV, { EXPO_PUBLIC_DEV_BYPASS_AUTH: "yes" });
+    await expect(import("./env")).rejects.toThrow(/EXPO_PUBLIC_DEV_BYPASS_AUTH/);
   });
 
   it("aggregates multiple missing variables into a single error message", async () => {

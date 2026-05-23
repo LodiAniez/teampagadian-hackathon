@@ -55,7 +55,7 @@ export function TextPanel({ value, onChange, onGenerate, isParsing, error }: Tex
         </View>
       </View>
       <Text className="text-xs text-gray-500">
-        Claude pulls client, line items, amounts, and dates. You review before sending.
+        Gemini pulls client, line items, amounts, and dates. You review before sending.
       </Text>
       {error ? (
         <Text className="text-xs text-red-500">
@@ -125,7 +125,7 @@ export function AIPreviewCard({ values }: AIPreviewCardProps) {
       <View className="mb-2 flex-row">
         <View className="rounded-full bg-brand-600 px-3 py-1">
           <Text className="text-[10px] font-bold uppercase tracking-wider text-white">
-            ✨ Parsed by Claude
+            ✨ Parsed by Gemini
           </Text>
         </View>
       </View>
@@ -385,7 +385,7 @@ export function ParseLoadingState() {
   return (
     <View className="flex-row items-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-3 py-3">
       <ActivityIndicator color="#0d9488" />
-      <Text className="text-sm text-brand-700">Claude is reading your description…</Text>
+      <Text className="text-sm text-brand-700">Gemini is reading your description…</Text>
     </View>
   );
 }

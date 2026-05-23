@@ -53,8 +53,8 @@ export const CreateInvoiceBodySchema = z
     sourceType: InvoiceSourceTypeSchema,
     lineItems: z.array(CreateInvoiceLineItemSchema).min(1),
   })
-  .refine((d) => d.clientId !== undefined || d.clientName !== undefined, {
-    message: "Either clientId or clientName is required",
+  .refine((d) => (d.clientId === undefined) !== (d.clientName === undefined), {
+    message: "Provide exactly one of clientId or clientName",
   });
 export type CreateInvoiceBody = z.infer<typeof CreateInvoiceBodySchema>;
 

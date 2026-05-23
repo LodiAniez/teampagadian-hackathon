@@ -74,6 +74,12 @@ describe("CreateInvoiceBodySchema", () => {
     expect(() => CreateInvoiceBodySchema.parse(rest)).toThrow();
   });
 
+  it("rejects when BOTH clientId and clientName are provided (must be exactly one)", () => {
+    expect(() =>
+      CreateInvoiceBodySchema.parse({ ...validCreateBody, clientName: "Acme Co." }),
+    ).toThrow(/exactly one/i);
+  });
+
   it("rejects empty clientName", () => {
     const { clientId: _, ...rest } = validCreateBody;
     expect(() => CreateInvoiceBodySchema.parse({ ...rest, clientName: "" })).toThrow();

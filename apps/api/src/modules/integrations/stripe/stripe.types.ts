@@ -18,8 +18,25 @@ export interface StripeClient {
     ): Promise<{ id: string; client_secret: string | null }>;
   };
   webhooks: {
-    constructEvent(payload: string | Buffer, header: string, secret: string): Stripe.Event;
+    constructEvent(payload: string | Buffer, header: string, secret: string): WebhookEvent;
   };
+}
+
+/**
+ * Narrowed shape of a verified Stripe webhook event.
+ *
+ * Stripe.Event is a sprawling discriminated union (200+ event types). We
+ * narrow to just what the webhook controller actually reads — id (logging),
+ * type (dispatch), data.object (handed to a Zod-validating mapper per
+ * docs/api-convention.md §8 trust-boundary guidance).
+ *
+ * Production wiring: Stripe.Event is structurally assignable to this shape.
+ * Tests: hand-rolled minimal events satisfy the same shape without casts.
+ */
+export interface WebhookEvent {
+  id: string;
+  type: string;
+  data: { object: unknown };
 }
 
 /**

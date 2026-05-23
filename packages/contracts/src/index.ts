@@ -20,3 +20,4 @@ export * from "./shared/money";
 export * from "./auth/auth.schema";
 export * from "./clients/clients.schema";
 export * from "./invoices/invoices.schema";
+export * from "./payout-methods/payout-methods.schema";

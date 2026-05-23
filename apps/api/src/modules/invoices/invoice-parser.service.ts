@@ -5,7 +5,12 @@ import {
   type SupportedCurrency,
   SupportedCurrencySchema,
 } from "@raket/contracts";
-import { GeminiService, type RawParsedInvoice } from "../integrations/gemini/gemini.service";
+import { todayIso } from "../../common/utils/dates";
+import {
+  GeminiService,
+  type RawParsedInvoice,
+  type RawParsedLineItem,
+} from "../integrations/gemini/gemini.service";
 
 @Injectable()
 export class InvoiceParserService {
@@ -13,15 +18,25 @@ export class InvoiceParserService {
 
   async parse(text: string, defaultCurrency?: SupportedCurrency): Promise<ParsedInvoiceDraft> {
     const raw = await this.gemini.parseInvoiceText(text, defaultCurrency);
+    const warnings: string[] = [];
 
-    const lineItems = raw.lineItems.map(toLineItem);
-    const warnings = collectWarnings(raw);
+    collectTopLevelWarnings(raw, warnings);
+
+    const lineItems: ParsedInvoiceLineItem[] = [];
+    for (const item of raw.lineItems) {
+      const description = item.description.trim();
+      if (description === "") {
+        warnings.push("Dropped a line item with no description");
+        continue;
+      }
+      lineItems.push(sanitizeLineItem({ ...item, description }, warnings));
+    }
 
     return {
       clientName: raw.clientName,
       clientEmail: raw.clientEmail,
       currency: resolveCurrency(raw.currency, defaultCurrency),
-      issueDate: raw.issueDate ?? today(),
+      issueDate: raw.issueDate ?? todayIso(),
       dueDate: raw.dueDate,
       lineItems,
       warnings,
@@ -29,14 +44,47 @@ export class InvoiceParserService {
   }
 }
 
-function toLineItem(raw: RawParsedInvoice["lineItems"][number]): ParsedInvoiceLineItem {
+function sanitizeLineItem(raw: RawParsedLineItem, warnings: string[]): ParsedInvoiceLineItem {
+  const { description } = raw;
+
+  let quantity = raw.quantity;
+  if (quantity === null) {
+    warnings.push(`Quantity not found for: ${description}`);
+  } else if (quantity <= 0) {
+    warnings.push(`Quantity "${quantity}" for "${description}" is not positive — set to null`);
+    quantity = null;
+  }
+
+  let rate = raw.rate;
+  if (rate === null) {
+    warnings.push(`Rate not found for: ${description}`);
+  } else if (rate < 0) {
+    warnings.push(`Rate "${rate}" for "${description}" is negative — set to null`);
+    rate = null;
+  }
+
+  let amount = raw.amount;
+  if (amount !== null && amount < 0) {
+    warnings.push(`Amount "${amount}" for "${description}" is negative — set to null`);
+    amount = null;
+  }
+
   return {
-    description: raw.description,
-    quantity: raw.quantity,
+    description,
+    quantity,
     unit: raw.unit,
-    rate: raw.rate,
-    amount: raw.amount,
+    rate,
+    amount,
   };
+}
+
+function collectTopLevelWarnings(raw: RawParsedInvoice, warnings: string[]): void {
+  if (raw.clientName === null) {
+    warnings.push("Client name could not be extracted");
+  }
+  if (raw.dueDate === null) {
+    warnings.push("Due date could not be determined");
+  }
 }
 
 function resolveCurrency(
@@ -48,29 +96,4 @@ function resolveCurrency(
     return parsed.data;
   }
   return fallback ?? "USD";
-}
-
-function collectWarnings(raw: RawParsedInvoice): string[] {
-  const warnings: string[] = [];
-
-  if (raw.clientName === null) {
-    warnings.push("Client name could not be extracted");
-  }
-  if (raw.dueDate === null) {
-    warnings.push("Due date could not be determined");
-  }
-  for (const item of raw.lineItems) {
-    if (item.quantity === null) {
-      warnings.push(`Quantity not found for: ${item.description}`);
-    }
-    if (item.rate === null) {
-      warnings.push(`Rate not found for: ${item.description}`);
-    }
-  }
-
-  return warnings;
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
 }

@@ -3,20 +3,20 @@ import { ConfigService } from "@nestjs/config";
 import { ApiError, GoogleGenAI, Type, type GenerateContentResponse } from "@google/genai";
 import { z } from "zod";
 import type { EnvConfig } from "../../../common/config/env.schema";
+import { todayIso } from "../../../common/utils/dates";
 
 // Upstream statuses worth one retry: gateway/availability blips. Quota (429)
 // and other 4xx won't recover from an immediate retry, so we fail fast on those.
 const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 
 function buildSystemInstruction(defaultCurrency?: string): string {
-  const today = new Date().toISOString().slice(0, 10);
   const currencyLine = defaultCurrency
     ? `If no currency is stated, assume ${defaultCurrency}.`
     : "If no currency is stated, leave currency null.";
 
   return [
     "You extract structured invoice data from a freelancer's plain-text description of work.",
-    `Today's date is ${today}.`,
+    `Today's date is ${todayIso()}.`,
     'Resolve relative dates against today and output them as YYYY-MM-DD — e.g. "due in 30 days", "net 15", "by next Friday". If a date truly cannot be determined, use null.',
     "Set any field to null when the text does not provide it — never guess amounts, dates, or client names.",
     currencyLine,

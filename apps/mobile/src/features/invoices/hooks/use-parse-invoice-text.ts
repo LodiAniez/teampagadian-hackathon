@@ -1,5 +1,6 @@
 import { api } from "@/lib/api-client";
 import type { ParsedInvoiceDraft, SupportedCurrency } from "@raket/contracts";
+import { normalizeError } from "../utils/error";
 
 export type ParseInvoiceTextInput = {
   text: string;
@@ -17,7 +18,7 @@ export function useParseInvoiceText() {
     draft: successDraft,
     warnings: successDraft?.warnings ?? [],
     isParsing: mutation.isPending,
-    error: mutation.error,
+    error: normalizeError(mutation.error),
     reset: mutation.reset,
   };
 }

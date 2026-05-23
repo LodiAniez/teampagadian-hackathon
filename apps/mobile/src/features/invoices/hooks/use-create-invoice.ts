@@ -1,5 +1,6 @@
 import { api } from "@/lib/api-client";
 import type { CreateInvoiceBody, Invoice } from "@raket/contracts";
+import { normalizeError } from "../utils/error";
 
 export function useCreateInvoice() {
   const mutation = api.invoices.create.useMutation();
@@ -10,7 +11,7 @@ export function useCreateInvoice() {
     save: (body: CreateInvoiceBody) => mutation.mutateAsync({ body }),
     created,
     isSaving: mutation.isPending,
-    error: mutation.error,
+    error: normalizeError(mutation.error),
     reset: mutation.reset,
   };
 }

@@ -44,7 +44,7 @@ export type CreateInvoiceLineItem = z.infer<typeof CreateInvoiceLineItemSchema>;
 export const CreateInvoiceBodySchema = z
   .object({
     clientId: z.string().uuid().optional(),
-    clientName: z.string().min(1).max(200).optional(),
+    clientName: z.string().trim().min(1).max(200).optional(),
     clientEmail: z.string().email().optional(),
     clientCountry: z.string().length(2).optional(),
     currency: SupportedCurrencySchema,

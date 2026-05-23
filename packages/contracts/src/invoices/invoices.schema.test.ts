@@ -85,6 +85,17 @@ describe("CreateInvoiceBodySchema", () => {
     expect(() => CreateInvoiceBodySchema.parse({ ...rest, clientName: "" })).toThrow();
   });
 
+  it("rejects whitespace-only clientName (trim before length check)", () => {
+    const { clientId: _, ...rest } = validCreateBody;
+    expect(() => CreateInvoiceBodySchema.parse({ ...rest, clientName: "   " })).toThrow();
+  });
+
+  it("trims surrounding whitespace on clientName so lookup is normalised", () => {
+    const { clientId: _, ...rest } = validCreateBody;
+    const parsed = CreateInvoiceBodySchema.parse({ ...rest, clientName: "  Acme Co.  " });
+    expect(parsed.clientName).toBe("Acme Co.");
+  });
+
   it("rejects invalid clientEmail", () => {
     const { clientId: _, ...rest } = validCreateBody;
     expect(() =>

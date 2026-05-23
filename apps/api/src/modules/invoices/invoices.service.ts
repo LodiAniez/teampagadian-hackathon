@@ -74,6 +74,8 @@ export class InvoicesService {
       data: {
         userId,
         clientId: body.clientId,
+        // TODO(TEA-31): replace with proper INV-YYYY-NNN per-user sequence
+        number: `INV-${Date.now()}`,
         status: "draft",
         amount: total,
         currency: body.currency,

@@ -90,7 +90,7 @@ describe("InvoicesService", () => {
   describe("create — clientId path", () => {
     it("links the existing client when clientId belongs to the user", async () => {
       prisma.client.findFirst.mockResolvedValue(mockClient);
-      prisma.invoice.count.mockResolvedValue(0);
+      prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.invoice.create.mockResolvedValue(mockInvoiceWithRelations());
 
       const result = await service.create(userId, { ...baseBody, clientId });
@@ -116,7 +116,7 @@ describe("InvoicesService", () => {
   describe("create — clientName path", () => {
     it("links existing client when clientName matches case-insensitively", async () => {
       prisma.client.findFirst.mockResolvedValue(mockClient);
-      prisma.invoice.count.mockResolvedValue(0);
+      prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.invoice.create.mockResolvedValue(mockInvoiceWithRelations());
 
       const result = await service.create(userId, { ...baseBody, clientName: "acme co." });
@@ -138,7 +138,7 @@ describe("InvoicesService", () => {
         country: "PH",
       };
       prisma.client.create.mockResolvedValue(newClient);
-      prisma.invoice.count.mockResolvedValue(0);
+      prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.invoice.create.mockResolvedValue(
         mockInvoiceWithRelations({ clientId: "new-client-id" }),
       );
@@ -169,7 +169,7 @@ describe("InvoicesService", () => {
         email: null,
         country: null,
       });
-      prisma.invoice.count.mockResolvedValue(0);
+      prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.invoice.create.mockResolvedValue(mockInvoiceWithRelations());
 
       await service.create(userId, { ...baseBody, clientName: "Minimal Co." });
@@ -187,17 +187,21 @@ describe("InvoicesService", () => {
   });
 
   describe("create — invoice number generation", () => {
-    it("formats as INV-YYYY-NNNN (4-digit zero-padded)", async () => {
+    it("formats as INV-YYYY-NNNN (4-digit zero-padded) using MAX(suffix)+1", async () => {
       prisma.client.findFirst.mockResolvedValue(mockClient);
-      prisma.invoice.count.mockResolvedValue(7);
+      prisma.invoice.findFirst.mockResolvedValue(
+        mockInvoiceRow({ number: `INV-${currentYear}-0007` }),
+      );
       prisma.invoice.create.mockResolvedValue(
         mockInvoiceWithRelations({ number: `INV-${currentYear}-0008` }),
       );
 
       await service.create(userId, { ...baseBody, clientId });
 
-      expect(prisma.invoice.count).toHaveBeenCalledWith({
+      expect(prisma.invoice.findFirst).toHaveBeenCalledWith({
         where: { userId, number: { startsWith: `INV-${currentYear}-` } },
+        orderBy: { number: "desc" },
+        select: { number: true },
       });
       const call = prisma.invoice.create.mock.calls[0][0];
       expect(call.data.number).toBe(`INV-${currentYear}-0008`);
@@ -205,7 +209,7 @@ describe("InvoicesService", () => {
 
     it("starts at 0001 for the year's first invoice", async () => {
       prisma.client.findFirst.mockResolvedValue(mockClient);
-      prisma.invoice.count.mockResolvedValue(0);
+      prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.invoice.create.mockResolvedValue(mockInvoiceWithRelations());
 
       await service.create(userId, { ...baseBody, clientId });
@@ -213,12 +217,28 @@ describe("InvoicesService", () => {
       const call = prisma.invoice.create.mock.calls[0][0];
       expect(call.data.number).toBe(`INV-${currentYear}-0001`);
     });
+
+    it("does not reissue a deleted number — picks MAX(suffix)+1 even if earlier numbers are gone", async () => {
+      // Latest remaining is 0009 (0008 was deleted). Next should be 0010, never 0009.
+      prisma.client.findFirst.mockResolvedValue(mockClient);
+      prisma.invoice.findFirst.mockResolvedValue(
+        mockInvoiceRow({ number: `INV-${currentYear}-0009` }),
+      );
+      prisma.invoice.create.mockResolvedValue(
+        mockInvoiceWithRelations({ number: `INV-${currentYear}-0010` }),
+      );
+
+      await service.create(userId, { ...baseBody, clientId });
+
+      const call = prisma.invoice.create.mock.calls[0][0];
+      expect(call.data.number).toBe(`INV-${currentYear}-0010`);
+    });
   });
 
   describe("create — totals & line items", () => {
     it("computes amount server-side from line items, ignoring any client-sent total", async () => {
       prisma.client.findFirst.mockResolvedValue(mockClient);
-      prisma.invoice.count.mockResolvedValue(0);
+      prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.invoice.create.mockResolvedValue(mockInvoiceWithRelations());
 
       await service.create(userId, {
@@ -237,7 +257,7 @@ describe("InvoicesService", () => {
 
     it("returns embedded client and line items in DTO", async () => {
       prisma.client.findFirst.mockResolvedValue(mockClient);
-      prisma.invoice.count.mockResolvedValue(0);
+      prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.invoice.create.mockResolvedValue(mockInvoiceWithRelations());
 
       const result = await service.create(userId, { ...baseBody, clientId });
@@ -285,6 +305,18 @@ describe("InvoicesService", () => {
 
       const call = prisma.invoice.findMany.mock.calls[0][0];
       expect(call?.where).toMatchObject({ userId });
+    });
+
+    it("orders embedded lineItems by position asc (matches getById/create)", async () => {
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      await service.list(userId, { limit: 20 });
+
+      const call = prisma.invoice.findMany.mock.calls[0][0];
+      expect(call?.include).toMatchObject({
+        client: true,
+        lineItems: { orderBy: { position: "asc" } },
+      });
     });
   });
 });

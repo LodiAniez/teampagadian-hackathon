@@ -41,7 +41,7 @@ export class InvoicesService {
         ...(query.status ? { status: query.status } : {}),
         ...(query.clientId ? { clientId: query.clientId } : {}),
       },
-      include: { client: true, lineItems: true },
+      include: { client: true, lineItems: { orderBy: { position: "asc" } } },
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       orderBy: { createdAt: "desc" },
@@ -156,10 +156,15 @@ export class InvoicesService {
     issueDate: string,
   ): Promise<string> {
     const year = new Date(issueDate).getFullYear();
-    const count = await tx.invoice.count({
+    // MAX(suffix)+1 rather than COUNT+1 so a deleted invoice's number is never reissued.
+    // `INV-YYYY-NNNN` is lexically sortable within a year, so ordering by `number desc` is safe.
+    const last = await tx.invoice.findFirst({
       where: { userId, number: { startsWith: `INV-${year}-` } },
+      orderBy: { number: "desc" },
+      select: { number: true },
     });
-    return `INV-${year}-${String(count + 1).padStart(4, "0")}`;
+    const lastN = last ? Number(last.number.slice(-4)) : 0;
+    return `INV-${year}-${String(lastN + 1).padStart(4, "0")}`;
   }
 
   async parseText(_userId: string, body: ParseInvoiceTextBody): Promise<ParsedInvoiceDraft> {

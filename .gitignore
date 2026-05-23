@@ -39,5 +39,8 @@ coverage/
 *.tgz
 .cache/
 
-# Claude (local-only settings — project settings.json is checked in)
+# Claude (local-only — project settings.json + hooks are checked in)
 .claude/settings.local.json
+.claude/skills/
+.agents/
+.tmp

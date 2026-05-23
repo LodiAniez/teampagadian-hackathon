@@ -13,6 +13,7 @@ These docs are authoritative. If something here conflicts with a convention doc,
 - [`docs/api-contract-convention.md`](docs/api-contract-convention.md) — ts-rest + Zod contracts in `packages/contracts`. Source of truth for every endpoint. **Change the contract first; both sides break at compile time and that is the point.**
 - [`docs/api-convention.md`](docs/api-convention.md) — NestJS vertical slices under `apps/api/src/modules/<feature>/`. Thin ts-rest controllers, services own all logic and Prisma calls, mappers at the boundary, typed errors mapped to the contract's `ErrorResponse`.
 - [`docs/web-convention.md`](docs/web-convention.md) — Next.js 15 App Router with feature-driven folders under `apps/web/src/features/<feature>/`. Three component tiers: global (pure, no logic), feature (render-only + paired hook), shared `*.parts.tsx` (each part with its own hook). Hooks own all data fetching.
+- [`docs/mobile-convention.md`](docs/mobile-convention.md) — Expo + Expo Router + NativeWind + TanStack Query for `apps/mobile/`. Same three-tier component model as web. Feature-driven folders under `apps/mobile/src/features/<feature>/`. Hooks own all data fetching; screens are thin route entry points. Native SDKs (Stripe, Supabase, `expo-*`) are always wrapped in `lib/` helpers or feature hooks — never called inline.
 
 ## TDD approach
 

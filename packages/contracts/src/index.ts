@@ -18,4 +18,5 @@ export * from "./shared/error";
 export * from "./shared/pagination";
 export * from "./shared/money";
 export * from "./auth/auth.schema";
+export * from "./clients/clients.schema";
 export * from "./invoices/invoices.schema";

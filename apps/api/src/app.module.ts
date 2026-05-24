@@ -4,6 +4,7 @@ import { CommonAuthModule } from "./common/auth/auth.module";
 import { HealthModule } from "./common/health/health.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { EmailModule } from "./modules/integrations/email/email.module";
 import { FxModule } from "./modules/integrations/fx/fx.module";
 import { GeminiModule } from "./modules/integrations/gemini/gemini.module";
 import { StripeModule } from "./modules/integrations/stripe/stripe.module";
@@ -20,6 +21,7 @@ import { PaymentsModule } from "./modules/payments/payments.module";
     AuthModule,
     FxModule,
     StripeModule,
+    EmailModule,
     PaymentsModule,
     InvoicesModule,
   ],

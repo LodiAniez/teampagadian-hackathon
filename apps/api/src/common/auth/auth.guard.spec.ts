@@ -11,7 +11,7 @@ import {
   type CryptoKey,
   type JWK,
 } from "jose";
-import type { User as PrismaUser } from "@prisma/client";
+import { Prisma, type User as PrismaUser } from "@prisma/client";
 import { AuthGuard } from "./auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
 import type { EnvConfig } from "../config/env.schema";
@@ -242,6 +242,29 @@ describe("AuthGuard", () => {
 
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: { supabaseUserId: SUPABASE_USER_ID, phone: PHONE },
+      });
+      expect(req.user).toEqual({ id: LOCAL_USER_ID, phone: PHONE });
+    });
+
+    it("recovers from a P2002 race on create by re-reading the winner row", async () => {
+      const winner = buildLocalUser();
+      prisma.user.findUnique
+        .mockResolvedValueOnce(null) // first lookup by supabaseUserId — no row yet
+        .mockResolvedValueOnce(null) // lookup by phone — also no row yet
+        .mockResolvedValueOnce(winner); // re-read after P2002 — concurrent request won
+      prisma.user.create.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+          code: "P2002",
+          clientVersion: "test",
+        }),
+      );
+
+      const token = await makeToken();
+      const { ctx, req } = buildContext(`Bearer ${token}`);
+
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(prisma.user.findUnique).toHaveBeenNthCalledWith(3, {
+        where: { supabaseUserId: SUPABASE_USER_ID },
       });
       expect(req.user).toEqual({ id: LOCAL_USER_ID, phone: PHONE });
     });

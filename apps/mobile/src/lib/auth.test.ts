@@ -21,6 +21,7 @@ vi.mock("@supabase/supabase-js", () => ({
 
 beforeAll(() => {
   process.env.EXPO_PUBLIC_API_URL = "https://api.example.test";
+  process.env.EXPO_PUBLIC_APP_URL = "https://raket.app";
   process.env.EXPO_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = "anon-key-12345";
   process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_12345";

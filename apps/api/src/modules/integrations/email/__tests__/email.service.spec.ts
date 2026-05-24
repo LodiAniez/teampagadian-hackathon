@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +18,12 @@ function buildParams(overrides: Partial<SendInvoiceEmailParams> = {}): SendInvoi
         { description: "Brand kit", amount: "300.00" },
       ],
     },
-    freelancer: { displayName: "Juan's Studio" },
+    freelancer: {
+      displayName: "Juan's Studio",
+      name: "Juan dela Cruz",
+      businessName: "Juan's Studio",
+      contactEmail: "juan@juanstudio.com",
+    },
     paymentUrl: "https://checkout.stripe.com/c/pay/cs_test_abc123",
     qrCodeDataUrl: "data:image/png;base64,iVBORw0KGgo=",
     recipientEmail: "ap@acme.com",
@@ -161,6 +167,50 @@ describe("EmailService", () => {
       });
 
       await expect(service.sendInvoiceEmail(buildParams())).rejects.not.toThrow(/`to` address/);
+    });
+
+    it("converts transport-level errors (fetch throws) into a structured 500", async () => {
+      mockConfigGet.mockReturnValue(undefined);
+      vi.mocked(mockResend.emails.send).mockRejectedValueOnce(
+        new TypeError("fetch failed: ENOTFOUND api.resend.com"),
+      );
+
+      await expect(service.sendInvoiceEmail(buildParams())).rejects.toThrow(
+        /email service is unavailable/,
+      );
+    });
+
+    it("logs invoice context when a transport error occurs", async () => {
+      mockConfigGet.mockReturnValue(undefined);
+      const loggerError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => {});
+      vi.mocked(mockResend.emails.send).mockRejectedValueOnce(
+        new TypeError("fetch failed: ENOTFOUND api.resend.com"),
+      );
+
+      await expect(service.sendInvoiceEmail(buildParams())).rejects.toThrow();
+
+      const message = String(loggerError.mock.calls[0]?.[0] ?? "");
+      expect(message).toContain("INV-2026-0001");
+      expect(message).toMatch(/transport/i);
+    });
+
+    it("renders 'unknown' instead of '(null)' when Resend omits statusCode", async () => {
+      mockConfigGet.mockReturnValue(undefined);
+      const loggerError = vi.spyOn(Logger.prototype, "error").mockImplementation(() => {});
+      vi.mocked(mockResend.emails.send).mockResolvedValueOnce({
+        data: null,
+        error: {
+          message: "Service unavailable",
+          name: "internal_server_error",
+          statusCode: null,
+        },
+      });
+
+      await expect(service.sendInvoiceEmail(buildParams())).rejects.toThrow();
+
+      const message = String(loggerError.mock.calls[0]?.[0] ?? "");
+      expect(message).toContain("(unknown)");
+      expect(message).not.toContain("(null)");
     });
   });
 });

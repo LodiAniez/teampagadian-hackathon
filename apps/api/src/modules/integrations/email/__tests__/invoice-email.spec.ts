@@ -18,7 +18,12 @@ function buildParams(overrides: Partial<RenderInvoiceEmailParams> = {}): RenderI
         { description: "Brand kit", amount: "300.00" },
       ],
     },
-    freelancer: { displayName: "Juan's Studio" },
+    freelancer: {
+      displayName: "Juan's Studio",
+      name: "Juan dela Cruz",
+      businessName: "Juan's Studio",
+      contactEmail: "juan@juanstudio.com",
+    },
     paymentUrl: "https://checkout.stripe.com/c/pay/cs_test_abc123",
     qrCodeDataUrl: "data:image/png;base64,iVBORw0KGgo=",
     ...overrides,
@@ -79,6 +84,43 @@ describe("renderInvoiceEmail", () => {
     expect(html).toContain("INV-2026-0001");
     expect(html).toContain("May 30, 2026");
   });
+
+  it("renders the freelancer's name in the signature (TEA-36 AC)", () => {
+    const html = renderInvoiceEmail(buildParams());
+
+    expect(html).toContain("Juan dela Cruz");
+  });
+
+  it("renders the business name in the signature when present (TEA-36 AC)", () => {
+    const html = renderInvoiceEmail(buildParams());
+
+    // businessName === displayName in the default fixture, so check the
+    // signature occurrence specifically by looking for the dedicated span.
+    expect(html).toMatch(/<span[^>]*>Juan's Studio<\/span>/);
+  });
+
+  it("omits the business-name line when the freelancer has no businessName", () => {
+    const html = renderInvoiceEmail(
+      buildParams({
+        freelancer: {
+          displayName: "Juan dela Cruz",
+          name: "Juan dela Cruz",
+          contactEmail: "juan@example.com",
+        },
+      }),
+    );
+
+    // No business-name span should be rendered when businessName is undefined.
+    expect(html).not.toMatch(/<span[^>]*>Juan dela Cruz<\/span>/);
+  });
+
+  it("renders the contact email as a mailto link in the signature (TEA-36 AC)", () => {
+    const html = renderInvoiceEmail(buildParams());
+
+    expect(html).toMatch(
+      /<a[^>]*href="mailto:juan@juanstudio\.com"[^>]*>juan@juanstudio\.com<\/a>/,
+    );
+  });
 });
 
 describe("renderInvoiceEmailText", () => {
@@ -99,5 +141,28 @@ describe("renderInvoiceEmailText", () => {
     const text = renderInvoiceEmailText(buildParams());
 
     expect(text).not.toMatch(/<[^>]+>/);
+  });
+
+  it("renders name, business name, and contact email in the signature", () => {
+    const text = renderInvoiceEmailText(buildParams());
+
+    expect(text).toContain("Juan dela Cruz");
+    expect(text).toContain("Juan's Studio");
+    expect(text).toContain("juan@juanstudio.com");
+  });
+
+  it("omits the business-name line when the freelancer has no businessName", () => {
+    const text = renderInvoiceEmailText(
+      buildParams({
+        freelancer: {
+          displayName: "Juan dela Cruz",
+          name: "Juan dela Cruz",
+          contactEmail: "juan@example.com",
+        },
+      }),
+    );
+
+    // Signature should be exactly: Thanks, / name / contactEmail
+    expect(text).toMatch(/Thanks,\nJuan dela Cruz\njuan@example\.com$/);
   });
 });

@@ -36,17 +36,31 @@ export class EmailService {
       qrCodeDataUrl: params.qrCodeDataUrl,
     };
 
-    const response = await this.resend.emails.send({
-      from: this.config.get("RESEND_FROM_EMAIL", { infer: true }) ?? DEFAULT_FROM,
-      to: params.recipientEmail,
-      subject: `Invoice ${params.invoice.number} from ${params.freelancer.displayName}`,
-      html: renderInvoiceEmail(renderParams),
-      text: renderInvoiceEmailText(renderParams),
-    });
+    // resend.emails.send() resolves to a { data, error } envelope for HTTP-level
+    // failures, but the underlying fetch throws on transport faults (DNS,
+    // timeout, TLS). Wrap the call so both paths produce the same structured
+    // 500 with invoice context in logs — otherwise transport errors propagate
+    // raw and the caller sees a generic Nest filter response with no audit trail.
+    let response;
+    try {
+      response = await this.resend.emails.send({
+        from: this.config.get("RESEND_FROM_EMAIL", { infer: true }) ?? DEFAULT_FROM,
+        to: params.recipientEmail,
+        subject: `Invoice ${params.invoice.number} from ${params.freelancer.displayName}`,
+        html: renderInvoiceEmail(renderParams),
+        text: renderInvoiceEmailText(renderParams),
+      });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Resend transport error for invoice ${params.invoice.number}: ${reason}`);
+      throw new InternalServerErrorException(
+        "Failed to send invoice email — the email service is unavailable. Please try again.",
+      );
+    }
 
     if (response.error) {
       this.logger.error(
-        `Resend rejected invoice ${params.invoice.number}: ${response.error.name} (${response.error.statusCode}) ${response.error.message}`,
+        `Resend rejected invoice ${params.invoice.number}: ${response.error.name} (${response.error.statusCode ?? "unknown"}) ${response.error.message}`,
       );
       throw new InternalServerErrorException(
         "Failed to send invoice email — the email service is unavailable. Please try again.",

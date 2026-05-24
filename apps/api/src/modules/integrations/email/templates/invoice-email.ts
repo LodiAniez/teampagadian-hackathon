@@ -65,7 +65,7 @@ ${lineItemRows}
 </td></tr>
 
 <tr><td style="padding:24px 32px 32px;">
-<p style="margin:0;font-size:14px;line-height:1.6;color:#374151;">Thanks,<br><strong style="color:#111827;">${escapeHtml(freelancer.displayName)}</strong></p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#374151;">Thanks,<br><strong style="color:#111827;">${escapeHtml(freelancer.name)}</strong>${freelancer.businessName ? `<br><span style="color:#6b7280;">${escapeHtml(freelancer.businessName)}</span>` : ""}<br><a href="mailto:${escapeAttr(freelancer.contactEmail)}" style="color:#0066ff;text-decoration:none;">${escapeHtml(freelancer.contactEmail)}</a></p>
 </td></tr>
 </table>
 
@@ -82,6 +82,13 @@ export function renderInvoiceEmailText(params: RenderInvoiceEmailParams): string
     .map((li) => `  - ${li.description}: ${li.amount} ${invoice.currency}`)
     .join("\n");
 
+  const signatureLines = [
+    "Thanks,",
+    freelancer.name,
+    ...(freelancer.businessName ? [freelancer.businessName] : []),
+    freelancer.contactEmail,
+  ];
+
   return [
     `Hi ${invoice.clientName},`,
     "",
@@ -95,8 +102,7 @@ export function renderInvoiceEmailText(params: RenderInvoiceEmailParams): string
     `Total: ${invoice.amount} ${invoice.currency}`,
     `Due: ${invoice.dueDate}`,
     "",
-    `Thanks,`,
-    freelancer.displayName,
+    ...signatureLines,
   ].join("\n");
 }
 

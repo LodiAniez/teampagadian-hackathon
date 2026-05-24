@@ -51,7 +51,13 @@ export interface InvoiceEmailLineItem {
 }
 
 export interface FreelancerEmailData {
-  displayName: string; // businessName ?? name — caller decides
+  // Prominent display used in the subject + intro copy ("funds settle to X").
+  // Caller decides the preference (typically businessName ?? name).
+  displayName: string;
+  // Structured signature fields per TEA-36 AC ("name, business name, contact").
+  name: string;
+  businessName?: string;
+  contactEmail: string;
 }
 
 export interface SendInvoiceEmailParams {

@@ -1,6 +1,8 @@
 import { View } from "react-native";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { useInvoiceForm, type InvoiceMode } from "./use-invoice-form";
+import type { InvoiceMode } from "../../types";
+import { useInvoiceForm } from "./use-invoice-form";
+import { useReviewEditCard } from "./use-review-edit-card";
 import {
   AIPreviewCard,
   ManualPanelStub,
@@ -22,9 +24,12 @@ const MODE_OPTIONS: ReadonlyArray<{ value: InvoiceMode; label: string }> = [
 
 export function InvoiceForm() {
   const f = useInvoiceForm();
-  const watched = f.form.watch();
-  const showAIPreview = f.mode !== "manual" && f.hasDraft;
-  const showReviewForm = f.hasDraft;
+  const reviewEdit = useReviewEditCard({
+    form: f.form,
+    lineItemFields: f.lineItems.fields,
+    onAdd: f.addLineItem,
+    onRemove: f.removeLineItem,
+  });
 
   return (
     <View className="flex-1">
@@ -49,21 +54,20 @@ export function InvoiceForm() {
 
         <WarningsChips warnings={f.warnings} />
 
-        {showAIPreview ? (
+        {f.showAIPreview ? (
           <>
             <SectionLabel>Raket AI · preview</SectionLabel>
-            <AIPreviewCard values={watched} />
+            <AIPreviewCard values={f.watchedValues} />
           </>
         ) : null}
 
-        {showReviewForm ? (
+        {f.showReviewForm ? (
           <>
             <SectionLabel>Review &amp; edit</SectionLabel>
             <ReviewEditCard
-              form={f.form}
-              lineItemFields={f.lineItems.fields}
-              onAdd={f.addLineItem}
-              onRemove={f.removeLineItem}
+              control={reviewEdit.control}
+              rows={reviewEdit.rows}
+              onAdd={reviewEdit.onAdd}
             />
           </>
         ) : null}

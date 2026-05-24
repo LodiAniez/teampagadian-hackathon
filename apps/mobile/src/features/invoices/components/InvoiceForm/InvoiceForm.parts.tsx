@@ -1,17 +1,20 @@
 import { Fragment } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import { Controller, type UseFormReturn } from "react-hook-form";
+import { Controller, type Control } from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
+import { formatMoney } from "@/lib/format";
 import type { CreateInvoiceLineItem } from "@raket/contracts";
+import { parseNumber } from "../../utils/parse-number";
 import {
   computeInvoiceTotal,
   computeLineTotal,
   type InvoiceFormValues,
 } from "../../utils/form-values";
+import type { ReviewEditCardRow } from "./use-review-edit-card";
 
 export function SectionLabel({ children }: { children: string }) {
   return (
@@ -188,17 +191,16 @@ function PreviewMeta({ label, value }: { label: string; value: string }) {
 }
 
 type ReviewEditCardProps = {
-  form: UseFormReturn<InvoiceFormValues>;
-  lineItemFields: ReadonlyArray<{ id: string }>;
+  control: Control<InvoiceFormValues>;
+  rows: ReadonlyArray<ReviewEditCardRow>;
   onAdd: () => void;
-  onRemove: (index: number) => void;
 };
 
-export function ReviewEditCard({ form, lineItemFields, onAdd, onRemove }: ReviewEditCardProps) {
+export function ReviewEditCard({ control, rows, onAdd }: ReviewEditCardProps) {
   return (
     <Card className="gap-4">
       <Controller
-        control={form.control}
+        control={control}
         name="clientEmail"
         render={({ field, fieldState }) => (
           <TextField
@@ -215,14 +217,8 @@ export function ReviewEditCard({ form, lineItemFields, onAdd, onRemove }: Review
       />
 
       <View className="gap-3">
-        {lineItemFields.map((field, index) => (
-          <LineItemRow
-            key={field.id}
-            form={form}
-            index={index}
-            canRemove={lineItemFields.length > 1}
-            onRemove={() => onRemove(index)}
-          />
+        {rows.map((row) => (
+          <LineItemRow key={row.id} control={control} row={row} />
         ))}
       </View>
 
@@ -237,23 +233,19 @@ export function ReviewEditCard({ form, lineItemFields, onAdd, onRemove }: Review
   );
 }
 
-function LineItemRow({
-  form,
-  index,
-  canRemove,
-  onRemove,
-}: {
-  form: UseFormReturn<InvoiceFormValues>;
-  index: number;
-  canRemove: boolean;
-  onRemove: () => void;
-}) {
+type LineItemRowProps = {
+  control: Control<InvoiceFormValues>;
+  row: ReviewEditCardRow;
+};
+
+function LineItemRow({ control, row }: LineItemRowProps) {
+  const { index, canRemove, onRemove } = row;
   return (
     <View className="gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
       <View className="flex-row items-center gap-2">
         <View className="flex-1">
           <Controller
-            control={form.control}
+            control={control}
             name={`lineItems.${index}.description`}
             render={({ field, fieldState }) => (
               <TextField
@@ -279,7 +271,7 @@ function LineItemRow({
       <View className="flex-row gap-2">
         <View className="flex-1">
           <Controller
-            control={form.control}
+            control={control}
             name={`lineItems.${index}.quantity`}
             render={({ field, fieldState }) => (
               <TextField
@@ -295,7 +287,7 @@ function LineItemRow({
         </View>
         <View className="flex-1">
           <Controller
-            control={form.control}
+            control={control}
             name={`lineItems.${index}.unit`}
             render={({ field, fieldState }) => (
               <TextField
@@ -310,7 +302,7 @@ function LineItemRow({
         </View>
         <View className="flex-1">
           <Controller
-            control={form.control}
+            control={control}
             name={`lineItems.${index}.rate`}
             render={({ field, fieldState }) => (
               <TextField
@@ -388,22 +380,4 @@ export function ParseLoadingState() {
       <Text className="text-sm text-brand-700">Gemini is reading your description…</Text>
     </View>
   );
-}
-
-function parseNumber(text: string): number {
-  const cleaned = text.replace(/[^0-9.\-]/g, "");
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function formatMoney(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
 }

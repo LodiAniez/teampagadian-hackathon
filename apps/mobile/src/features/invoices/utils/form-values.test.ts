@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ParsedInvoiceDraft } from "@raket/contracts";
 import {
   computeInvoiceTotal,
@@ -45,6 +45,27 @@ describe("mapDraftToFormValues", () => {
   it("falls back to issueDate + 14 days when dueDate is null", () => {
     const values = mapDraftToFormValues({ ...FULL_DRAFT, dueDate: null });
     expect(values.dueDate).toBe("2026-06-04");
+  });
+
+  describe("with mocked clock at 2026-05-23", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-05-23T12:00:00Z"));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("falls back to today when issueDate is invalid, and derives dueDate from that", () => {
+      const draft = {
+        ...FULL_DRAFT,
+        issueDate: "",
+        dueDate: null,
+      } as unknown as ParsedInvoiceDraft;
+      const values = mapDraftToFormValues(draft);
+      expect(values.issueDate).toBe("2026-05-23");
+      expect(values.dueDate).toBe("2026-06-06");
+    });
   });
 
   it("coerces nullable line-item fields to safe defaults", () => {

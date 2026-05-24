@@ -49,12 +49,14 @@ export function mapDraftToFormValues(
           rate: item.rate ?? DEFAULT_RATE,
         }));
 
+  const issueDate = isValidIsoDate(draft.issueDate) ? draft.issueDate : toISODate(new Date());
+
   return {
     clientName: draft.clientName ?? undefined,
     clientEmail: draft.clientEmail ?? undefined,
     currency: draft.currency,
-    issueDate: draft.issueDate,
-    dueDate: draft.dueDate ?? addDaysISO(draft.issueDate, DEFAULT_DUE_DATE_OFFSET_DAYS),
+    issueDate,
+    dueDate: draft.dueDate ?? addDaysISO(issueDate, DEFAULT_DUE_DATE_OFFSET_DAYS),
     sourceType,
     lineItems,
   };
@@ -72,8 +74,13 @@ function toISODate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0) return false;
+  return !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
+}
+
 function addDaysISO(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return toISODate(d);
+  const base = isValidIsoDate(isoDate) ? new Date(`${isoDate}T00:00:00Z`) : new Date();
+  base.setUTCDate(base.getUTCDate() + days);
+  return toISODate(base);
 }

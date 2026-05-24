@@ -10,11 +10,11 @@ describe("normalizeError", () => {
   it("extracts message from a ts-rest ErrorResponse-style object (body.message)", () => {
     const tsRestError = {
       status: 422,
-      body: { code: "VALIDATION_FAILED", message: "Either clientId or clientName is required" },
+      body: { code: "VALIDATION_FAILED", message: "Provide exactly one of clientId or clientName" },
       headers: new Headers(),
     };
     expect(normalizeError(tsRestError)).toEqual({
-      message: "Either clientId or clientName is required",
+      message: "Provide exactly one of clientId or clientName",
     });
   });
 

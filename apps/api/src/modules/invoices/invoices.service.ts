@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  NotImplementedException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException, NotImplementedException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import type { Client as ClientRow } from "@prisma/client";
 import type {
@@ -41,7 +36,9 @@ export class InvoicesService {
         ...(query.status ? { status: query.status } : {}),
         ...(query.clientId ? { clientId: query.clientId } : {}),
       },
-      include: { client: true, lineItems: true },
+      // Embedding the full client per row inflates payload when one client owns many
+      // invoices; revisit (clientId + included.clients[]) if list pages get large.
+      include: { client: true, lineItems: { orderBy: { position: "asc" } } },
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       orderBy: { createdAt: "desc" },
@@ -71,6 +68,22 @@ export class InvoicesService {
   }
 
   async create(userId: string, body: CreateInvoiceBody): Promise<Invoice> {
+    // Two concurrent creates can pick the same INV-YYYY-NNNN before either commits;
+    // the second hits @@unique([userId, number]) → P2002. One retry recomputes
+    // MAX(suffix)+1 (now including the winner) and gets the next number. For
+    // stronger guarantees under heavy contention, move to a sequence table with
+    // SELECT ... FOR UPDATE — see "should-fix" #3 in the TEA-31 review.
+    try {
+      return await this.tryCreate(userId, body);
+    } catch (err) {
+      if (isInvoiceNumberConflict(err)) {
+        return this.tryCreate(userId, body);
+      }
+      throw err;
+    }
+  }
+
+  private tryCreate(userId: string, body: CreateInvoiceBody): Promise<Invoice> {
     return this.prisma.$transaction(async (tx) => {
       const client = await this.resolveClient(tx, userId, body);
       const number = await this.nextInvoiceNumber(tx, userId, body.issueDate);
@@ -116,6 +129,9 @@ export class InvoicesService {
     userId: string,
     body: CreateInvoiceBody,
   ): Promise<ClientRow> {
+    // clientEmail / clientCountry on the body are snapshotted onto a *newly created*
+    // client only — they are intentionally NOT used to update an existing client
+    // matched by id or by name. Editing a client is a separate concern.
     if (body.clientId) {
       const found = await tx.client.findFirst({
         where: { id: body.clientId, userId },
@@ -128,8 +144,9 @@ export class InvoicesService {
 
     const clientName = body.clientName;
     if (!clientName) {
-      // Refine on the schema should have caught this; defensive guard.
-      throw new BadRequestException("Either clientId or clientName is required");
+      // Unreachable: the contract's XOR refine guarantees one of clientId/clientName
+      // is set. If we get here something is wired wrong, not a user input error.
+      throw new Error("Invariant: clientId or clientName must be present after refine");
     }
 
     const existing = await tx.client.findFirst({
@@ -145,6 +162,8 @@ export class InvoicesService {
         name: clientName,
         email: body.clientEmail ?? null,
         country: body.clientCountry ?? null,
+        // Snapshot of the first invoice's currency. Subsequent invoices in other
+        // currencies won't update this; treat it as the client's preferred default.
         defaultCurrency: body.currency,
       },
     });
@@ -156,10 +175,15 @@ export class InvoicesService {
     issueDate: string,
   ): Promise<string> {
     const year = new Date(issueDate).getFullYear();
-    const count = await tx.invoice.count({
+    // MAX(suffix)+1 rather than COUNT+1 so a deleted invoice's number is never reissued.
+    // `INV-YYYY-NNNN` is lexically sortable within a year, so ordering by `number desc` is safe.
+    const last = await tx.invoice.findFirst({
       where: { userId, number: { startsWith: `INV-${year}-` } },
+      orderBy: { number: "desc" },
+      select: { number: true },
     });
-    return `INV-${year}-${String(count + 1).padStart(4, "0")}`;
+    const lastN = last ? Number(last.number.slice(-4)) : 0;
+    return `INV-${year}-${String(lastN + 1).padStart(4, "0")}`;
   }
 
   async parseText(_userId: string, body: ParseInvoiceTextBody): Promise<ParsedInvoiceDraft> {
@@ -179,4 +203,16 @@ export class InvoicesService {
   async void(_userId: string, _invoiceId: string): Promise<Invoice> {
     throw new NotImplementedException("void: implement state transition + idempotency");
   }
+}
+
+function isInvoiceNumberConflict(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (err.code !== "P2002") return false;
+  // Prisma reports target as string[] (field names) or string (constraint name)
+  // depending on driver/version. Match the `number` column either way; we don't
+  // retry on other unique violations so unrelated bugs still bubble.
+  const target = err.meta?.target;
+  if (Array.isArray(target)) return target.includes("number");
+  if (typeof target === "string") return target.includes("number");
+  return false;
 }

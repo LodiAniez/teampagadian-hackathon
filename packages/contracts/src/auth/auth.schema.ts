@@ -7,24 +7,6 @@ export const PhoneNumberSchema = z
 export const BirElectionSchema = z.enum(["8_percent", "graduated"]);
 export type BirElection = z.infer<typeof BirElectionSchema>;
 
-export const RequestOtpBodySchema = z.object({
-  phone: PhoneNumberSchema,
-});
-export type RequestOtpDto = z.infer<typeof RequestOtpBodySchema>;
-
-export const RequestOtpResponseSchema = z.object({
-  success: z.literal(true),
-  expiresInSeconds: z.number().int().positive(),
-  devOtpCode: z.string().length(6).regex(/^\d{6}$/).optional(), // demo only — remove before real launch
-});
-export type RequestOtpResponse = z.infer<typeof RequestOtpResponseSchema>;
-
-export const VerifyOtpBodySchema = z.object({
-  phone: PhoneNumberSchema,
-  code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
-});
-export type VerifyOtpDto = z.infer<typeof VerifyOtpBodySchema>;
-
 export const UserSchema = z.object({
   id: z.string().uuid(),
   phone: PhoneNumberSchema,
@@ -37,21 +19,6 @@ export const UserSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 export type User = z.infer<typeof UserSchema>;
-
-export const VerifyOtpResponseSchema = z.object({
-  user: UserSchema,
-  accessToken: z.string(),
-  isNewUser: z.boolean(),
-});
-export type VerifyOtpResponse = z.infer<typeof VerifyOtpResponseSchema>;
-
-export const AuthSessionSchema = z.object({
-  userId: z.string().uuid(),
-  phone: PhoneNumberSchema,
-  iat: z.number().int(),
-  exp: z.number().int(),
-});
-export type AuthSession = z.infer<typeof AuthSessionSchema>;
 
 export const UpdateProfileBodySchema = z
   .object({

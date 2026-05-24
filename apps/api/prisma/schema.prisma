@@ -22,6 +22,7 @@ enum BirElection {
 
 model User {
   id                String       @id @default(uuid()) @db.Uuid
+  supabaseUserId    String?      @unique @map("supabase_user_id") @db.Uuid
   phone             String       @unique
   name              String?
   businessName      String?      @map("business_name")
@@ -36,19 +37,6 @@ model User {
   invoices      Invoice[]
 
   @@map("users")
-}
-
-model OtpChallenge {
-  id         String    @id @default(uuid()) @db.Uuid
-  phone      String
-  codeHash   String    @map("code_hash")
-  expiresAt  DateTime  @map("expires_at")
-  consumedAt DateTime? @map("consumed_at")
-  attempts   Int       @default(0)
-  createdAt  DateTime  @default(now()) @map("created_at")
-
-  @@index([phone, createdAt])
-  @@map("otp_challenges")
 }
 
 // ---------------------------------------------------------------------------

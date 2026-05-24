@@ -4,6 +4,8 @@ export { CountryCodeButton, COUNTRIES } from "./CountryCodeButton";
 export type { Country } from "./CountryCodeButton";
 export { PhoneField } from "./PhoneField";
 export type { PhoneFieldProps } from "./PhoneField";
+export { SegmentedControl } from "./SegmentedControl";
+export type { SegmentedControlOption, SegmentedControlProps } from "./SegmentedControl";
 export { Skeleton } from "./Skeleton";
 export { TextArea } from "./TextArea";
 export type { TextAreaProps } from "./TextArea";

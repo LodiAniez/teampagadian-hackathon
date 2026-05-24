@@ -7,6 +7,13 @@ const schema = z.object({
   EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: z
     .string()
     .min(1, "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is required"),
+  // Dev-only Bearer token for hitting the authed API before TEA-17/18 (login) lands.
+  // Paste a JWT from the Supabase dashboard. Remove once `lib/auth.ts` reads from secure-store.
+  EXPO_PUBLIC_DEV_BEARER: z.string().optional(),
+  // Dev-only: when "true", the (authed) layout skips its Supabase-session redirect so
+  // screens can be tested without a real login. Ignored in production builds (gated by __DEV__).
+  // Remove once the login flow works end-to-end against a real Supabase project.
+  EXPO_PUBLIC_DEV_BYPASS_AUTH: z.enum(["true", "false"]).optional(),
 });
 
 const result = schema.safeParse({
@@ -14,6 +21,8 @@ const result = schema.safeParse({
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  EXPO_PUBLIC_DEV_BEARER: process.env.EXPO_PUBLIC_DEV_BEARER,
+  EXPO_PUBLIC_DEV_BYPASS_AUTH: process.env.EXPO_PUBLIC_DEV_BYPASS_AUTH,
 });
 
 if (!result.success) {

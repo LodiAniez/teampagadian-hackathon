@@ -22,8 +22,6 @@ export const EnvSchema = z.object({
   // is configured, which happens after the API has a public URL.
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 
-  JWT_SECRET: z.string().min(32),
-
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().min(1).default("gemini-2.5-flash"),
 
@@ -43,12 +41,6 @@ export const EnvSchema = z.object({
         .filter(Boolean),
     )
     .pipe(z.array(z.string().url()).min(1)),
-  // When true, AuthService.requestOtp issues the static demo code "123456"
-  // instead of a random 6-digit code. Demo-only convenience; safe to enable
-  // anywhere (including prod) because the OTP path is mocked SMS regardless.
-  OTP_TEST: z
-    .preprocess((v) => (typeof v === "string" ? v === "true" : v), z.boolean())
-    .default(false),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;

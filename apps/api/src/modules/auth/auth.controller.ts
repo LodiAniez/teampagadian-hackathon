@@ -10,22 +10,6 @@ import { AuthService } from "./auth.service";
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
-  @TsRestHandler(contract.auth.requestOtp)
-  requestOtp() {
-    return tsRestHandler(contract.auth.requestOtp, async ({ body }) => {
-      const result = await this.auth.requestOtp(body);
-      return { status: 200, body: result };
-    });
-  }
-
-  @TsRestHandler(contract.auth.verifyOtp)
-  verifyOtp() {
-    return tsRestHandler(contract.auth.verifyOtp, async ({ body }) => {
-      const session = await this.auth.verifyOtp(body);
-      return { status: 200, body: session };
-    });
-  }
-
   @UseGuards(AuthGuard)
   @TsRestHandler(contract.auth.me)
   me(@CurrentUser() user: AuthUser) {

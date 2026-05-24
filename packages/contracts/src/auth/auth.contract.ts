@@ -1,14 +1,7 @@
 import { initContract } from "@ts-rest/core";
 import { z } from "zod";
 import { ErrorResponseSchema } from "../shared/error";
-import {
-  RequestOtpBodySchema,
-  RequestOtpResponseSchema,
-  UpdateProfileBodySchema,
-  UserSchema,
-  VerifyOtpBodySchema,
-  VerifyOtpResponseSchema,
-} from "./auth.schema";
+import { UpdateProfileBodySchema, UserSchema } from "./auth.schema";
 
 const c = initContract();
 
@@ -18,28 +11,6 @@ const authedHeaders = z.object({
 
 export const authContract = c.router(
   {
-    requestOtp: {
-      method: "POST",
-      path: "/request-otp",
-      body: RequestOtpBodySchema,
-      responses: {
-        200: RequestOtpResponseSchema,
-        422: ErrorResponseSchema,
-        429: ErrorResponseSchema,
-      },
-      summary: "Request an OTP code for the given phone number",
-    },
-    verifyOtp: {
-      method: "POST",
-      path: "/verify-otp",
-      body: VerifyOtpBodySchema,
-      responses: {
-        200: VerifyOtpResponseSchema,
-        401: ErrorResponseSchema,
-        422: ErrorResponseSchema,
-      },
-      summary: "Verify the OTP and exchange for a session",
-    },
     me: {
       method: "GET",
       path: "/me",

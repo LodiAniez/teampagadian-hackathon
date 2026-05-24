@@ -9,7 +9,6 @@ function baseEnv(): Record<string, string> {
     SUPABASE_ANON_KEY: "anon-key",
     SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
     STRIPE_SECRET_KEY: "sk_test_123",
-    JWT_SECRET: "a-very-long-secret-key-that-is-at-least-32-chars",
     GEMINI_API_KEY: "test-gemini-key",
     RESEND_API_KEY: "re_test",
     NEXT_PUBLIC_APP_URL: "https://app.example.com",
@@ -39,24 +38,6 @@ describe("validateEnv", () => {
         STRIPE_WEBHOOK_SECRET: "not-a-real-secret",
       }),
     ).toThrow(/STRIPE_WEBHOOK_SECRET/);
-  });
-
-  it("defaults OTP_TEST to false when unset", () => {
-    const parsed = validateEnv(baseEnv());
-
-    expect(parsed.OTP_TEST).toBe(false);
-  });
-
-  it('coerces OTP_TEST="true" to boolean true', () => {
-    const parsed = validateEnv({ ...baseEnv(), OTP_TEST: "true" });
-
-    expect(parsed.OTP_TEST).toBe(true);
-  });
-
-  it('coerces OTP_TEST="false" to boolean false', () => {
-    const parsed = validateEnv({ ...baseEnv(), OTP_TEST: "false" });
-
-    expect(parsed.OTP_TEST).toBe(false);
   });
 
   describe("CORS_ORIGINS", () => {

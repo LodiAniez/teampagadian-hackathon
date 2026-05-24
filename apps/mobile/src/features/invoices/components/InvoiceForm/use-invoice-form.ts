@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CreateInvoiceBodySchema,
@@ -9,13 +9,12 @@ import {
 } from "@raket/contracts";
 import { useParseInvoiceText } from "../../hooks/use-parse-invoice-text";
 import { useCreateInvoice } from "../../hooks/use-create-invoice";
+import type { InvoiceMode } from "../../types";
 import {
   emptyFormValues,
   mapDraftToFormValues,
   type InvoiceFormValues,
 } from "../../utils/form-values";
-
-export type InvoiceMode = "text" | "upload" | "manual";
 
 export function useInvoiceForm() {
   const router = useRouter();
@@ -33,6 +32,7 @@ export function useInvoiceForm() {
   });
 
   const lineItems = useFieldArray({ control: form.control, name: "lineItems" });
+  const watchedValues = useWatch({ control: form.control }) as Partial<InvoiceFormValues>;
 
   function applyDraft(draft: ParsedInvoiceDraft, sourceType: InvoiceMode) {
     form.reset(mapDraftToFormValues(draft, sourceType) as Partial<InvoiceFormValues>);
@@ -41,9 +41,13 @@ export function useInvoiceForm() {
 
   async function onGenerate() {
     if (!draftText.trim()) return;
-    const result = await parse.parse({ text: draftText });
-    if (result.status === 200) {
-      applyDraft(result.body, mode);
+    try {
+      const result = await parse.parse({ text: draftText });
+      if (result.status === 200) {
+        applyDraft(result.body, mode);
+      }
+    } catch {
+      // mutateAsync rejects on 4xx/5xx; surface via parse.error instead of bubbling.
     }
   }
 
@@ -65,17 +69,24 @@ export function useInvoiceForm() {
   }
 
   async function saveAndGo(values: CreateInvoiceBody, nextRoute: "send" | "dashboard") {
-    const result = await create.save(values);
-    if (result.status !== 201) return;
-    if (nextRoute === "send") {
-      router.replace({ pathname: "/invoices/[id]/sent", params: { id: result.body.id } });
-    } else {
-      router.dismissAll();
+    try {
+      const result = await create.save(values);
+      if (result.status !== 201) return;
+      if (nextRoute === "send") {
+        router.replace({ pathname: "/invoices/[id]/sent", params: { id: result.body.id } });
+      } else {
+        router.dismissAll();
+      }
+    } catch {
+      // mutateAsync rejects on 4xx/5xx; surface via create.error instead of bubbling.
     }
   }
 
   const onSaveDraft = form.handleSubmit((values) => saveAndGo(values, "dashboard"));
   const onContinueToSend = form.handleSubmit((values) => saveAndGo(values, "send"));
+
+  const showAIPreview = mode !== "manual" && hasDraft;
+  const showReviewForm = hasDraft;
 
   return {
     mode,
@@ -87,10 +98,13 @@ export function useInvoiceForm() {
     parseError: parse.error,
     warnings: parse.warnings,
     form,
+    watchedValues,
     lineItems,
     addLineItem,
     removeLineItem,
     hasDraft,
+    showAIPreview,
+    showReviewForm,
     onSaveDraft,
     onContinueToSend,
     isSubmitting: create.isSaving,

@@ -13,16 +13,6 @@ export type SegmentedControlProps<V extends string> = {
   className?: ViewProps["className"];
 };
 
-/**
- * Pill-shaped tab control. Pure: caller owns selection state.
- *
- * Usage:
- *   <SegmentedControl
- *     options={[{ value: "text", label: "Text" }, { value: "manual", label: "Manual" }]}
- *     value={mode}
- *     onChange={setMode}
- *   />
- */
 export function SegmentedControl<V extends string>({
   options,
   value,

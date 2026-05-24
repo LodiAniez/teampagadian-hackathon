@@ -1,10 +1,5 @@
 export type NormalizedError = { message: string };
 
-/**
- * ts-rest mutations expose either an `ErrorResponse` (typed body from a 4xx/5xx)
- * or a JS Error (network/parse failures). Components only care about a string
- * message — this collapses both shapes to `{ message } | null`.
- */
 export function normalizeError(raw: unknown): NormalizedError | null {
   if (!raw) return null;
   if (typeof raw === "object" && raw !== null) {

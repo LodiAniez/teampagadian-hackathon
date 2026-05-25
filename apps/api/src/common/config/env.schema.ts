@@ -13,6 +13,8 @@ export const EnvSchema = z.object({
   LOCAL_DATABASE_URL: z.string().url().optional(),
   LOCAL_DIRECT_URL: z.string().url().optional(),
 
+  FRESH_AUTH_MAX_AGE_SECONDS: z.coerce.number().int().positive().default(300),
+
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),

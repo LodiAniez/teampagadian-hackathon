@@ -17,6 +17,19 @@ export interface StripeClient {
       params: Stripe.SetupIntentCreateParams,
     ): Promise<{ id: string; client_secret: string | null }>;
   };
+  paymentMethods: {
+    retrieve(id: string): Promise<{
+      id: string;
+      type: string;
+      customer?: string | { id: string } | null;
+      card?: {
+        brand: string;
+        last4: string;
+        exp_month: number;
+        exp_year: number;
+      } | null;
+    }>;
+  };
   webhooks: {
     constructEvent(payload: string | Buffer, header: string, secret: string): WebhookEvent;
   };

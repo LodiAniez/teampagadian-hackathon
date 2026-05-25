@@ -1,5 +1,13 @@
-import { Inject, Injectable, InternalServerErrorException, Logger } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  UnprocessableEntityException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { CardDetails } from "@raket/contracts";
 import type { EnvConfig } from "@/common/config/env.schema";
 import {
   STRIPE_CLIENT,
@@ -40,6 +48,27 @@ export class StripeService {
 
     this.logger.log(`Created SetupIntent ${intent.id} for user ${userId}`);
     return { setupIntentId: intent.id, clientSecret: intent.client_secret };
+  }
+
+  // LIMITATION: rejects PMs attached to a Stripe Customer, but cannot verify
+  // cross-user ownership within this app — all our SetupIntents create
+  // unattached PMs (customer: null). Full fix requires a stripeCustomerId
+  // on User and passing customer to SetupIntent.create.
+  async retrieveCardDetails(stripePaymentMethodId: string): Promise<CardDetails> {
+    const pm = await this.stripe.paymentMethods.retrieve(stripePaymentMethodId);
+    if (pm.customer) {
+      throw new ForbiddenException("Payment method belongs to another Stripe customer");
+    }
+    if (pm.type !== "card" || !pm.card) {
+      throw new UnprocessableEntityException("Payment method is not a card");
+    }
+    return {
+      brand: pm.card.brand,
+      last4: pm.card.last4,
+      expMonth: pm.card.exp_month,
+      expYear: pm.card.exp_year,
+      stripePaymentMethodId: pm.id,
+    };
   }
 
   /**

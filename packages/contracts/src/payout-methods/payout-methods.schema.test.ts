@@ -228,84 +228,48 @@ describe("PayoutMethodSchema (discriminated union)", () => {
 });
 
 describe("AddPayoutMethodBodySchema (discriminated union)", () => {
-  const validOtp = "123456";
-
-  it("accepts a card add request with stripePaymentMethodId + otpCode", () => {
+  it("accepts a card add request with stripePaymentMethodId", () => {
     expect(() =>
       AddPayoutMethodBodySchema.parse({
         type: "card",
         stripePaymentMethodId: "pm_1A2b3C4d",
-        otpCode: validOtp,
       }),
     ).not.toThrow();
   });
 
-  it("accepts a gcash add request with phoneNumber + accountName + otpCode", () => {
+  it("accepts a gcash add request with phoneNumber + accountName", () => {
     expect(() =>
       AddPayoutMethodBodySchema.parse({
         type: "gcash",
         phoneNumber: "+639171234567",
         accountName: "Juan Dela Cruz",
-        otpCode: validOtp,
       }),
     ).not.toThrow();
   });
 
-  it("accepts a maya add request with phoneNumber + accountName + otpCode", () => {
+  it("accepts a maya add request with phoneNumber + accountName", () => {
     expect(() =>
       AddPayoutMethodBodySchema.parse({
         type: "maya",
         phoneNumber: "+639181234567",
         accountName: "Maria Santos",
-        otpCode: validOtp,
       }),
     ).not.toThrow();
   });
 
-  it("accepts a bank_account add request with bankName + accountNumberLast4 + accountName + otpCode", () => {
+  it("accepts a bank_account add request with bankName + accountNumberLast4 + accountName", () => {
     expect(() =>
       AddPayoutMethodBodySchema.parse({
         type: "bank_account",
         bankName: "BPI",
         accountNumberLast4: "9876",
         accountName: "Juan Dela Cruz",
-        otpCode: validOtp,
       }),
     ).not.toThrow();
   });
 
-  it("rejects every variant when otpCode is missing", () => {
-    expect(() =>
-      AddPayoutMethodBodySchema.parse({ type: "card", stripePaymentMethodId: "pm_x" }),
-    ).toThrow();
-    expect(() =>
-      AddPayoutMethodBodySchema.parse({
-        type: "gcash",
-        phoneNumber: "+639171234567",
-        accountName: "A",
-      }),
-    ).toThrow();
-  });
-
-  it("rejects an otpCode that is not 6 digits", () => {
-    expect(() =>
-      AddPayoutMethodBodySchema.parse({
-        type: "card",
-        stripePaymentMethodId: "pm_1A2b3C4d",
-        otpCode: "12345",
-      }),
-    ).toThrow();
-    expect(() =>
-      AddPayoutMethodBodySchema.parse({
-        type: "card",
-        stripePaymentMethodId: "pm_1A2b3C4d",
-        otpCode: "abcdef",
-      }),
-    ).toThrow();
-  });
-
   it("rejects a card add request missing stripePaymentMethodId", () => {
-    expect(() => AddPayoutMethodBodySchema.parse({ type: "card", otpCode: validOtp })).toThrow();
+    expect(() => AddPayoutMethodBodySchema.parse({ type: "card" })).toThrow();
   });
 
   it("rejects a card add request whose stripePaymentMethodId is not a Stripe pm_ id", () => {
@@ -313,7 +277,6 @@ describe("AddPayoutMethodBodySchema (discriminated union)", () => {
       AddPayoutMethodBodySchema.parse({
         type: "card",
         stripePaymentMethodId: "seti_123",
-        otpCode: validOtp,
       }),
     ).toThrow();
   });
@@ -324,7 +287,6 @@ describe("AddPayoutMethodBodySchema (discriminated union)", () => {
         type: "gcash",
         phoneNumber: "09171234567",
         accountName: "Juan",
-        otpCode: validOtp,
       }),
     ).toThrow();
   });
@@ -334,7 +296,6 @@ describe("AddPayoutMethodBodySchema (discriminated union)", () => {
 
     if (body.type === "card") {
       expectTypeOf(body.stripePaymentMethodId).toEqualTypeOf<string>();
-      expectTypeOf(body.otpCode).toEqualTypeOf<string>();
     }
     if (body.type === "gcash" || body.type === "maya") {
       expectTypeOf(body.phoneNumber).toEqualTypeOf<string>();

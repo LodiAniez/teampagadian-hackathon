@@ -1,6 +1,7 @@
 import { initContract } from "@ts-rest/core";
 import { authContract } from "./auth/auth.contract";
 import { invoicesContract } from "./invoices/invoices.contract";
+import { payoutMethodsContract } from "./payout-methods/payout-methods.contract";
 
 const c = initContract();
 
@@ -8,6 +9,7 @@ export const contract = c.router(
   {
     auth: authContract,
     invoices: invoicesContract,
+    payoutMethods: payoutMethodsContract,
   },
   { pathPrefix: "/api/v1" },
 );

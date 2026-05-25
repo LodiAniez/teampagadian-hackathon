@@ -52,32 +52,26 @@ export const PayoutMethodSchema = z.discriminatedUnion("type", [
 ]);
 export type PayoutMethod = z.infer<typeof PayoutMethodSchema>;
 
-const OtpCodeSchema = z.string().regex(/^\d{6}$/, "otpCode must be 6 digits");
-
 export const AddPayoutMethodBodySchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("card"),
     stripePaymentMethodId: z.string().startsWith("pm_"),
-    otpCode: OtpCodeSchema,
   }),
   z.object({
     type: z.literal("gcash"),
     phoneNumber: PhoneNumberSchema,
     accountName: z.string().min(1).max(200),
-    otpCode: OtpCodeSchema,
   }),
   z.object({
     type: z.literal("maya"),
     phoneNumber: PhoneNumberSchema,
     accountName: z.string().min(1).max(200),
-    otpCode: OtpCodeSchema,
   }),
   z.object({
     type: z.literal("bank_account"),
     bankName: z.string().min(1).max(120),
     accountNumberLast4: z.string().regex(/^\d{4}$/, "accountNumberLast4 must be exactly 4 digits"),
     accountName: z.string().min(1).max(200),
-    otpCode: OtpCodeSchema,
   }),
 ]);
 export type AddPayoutMethodBody = z.infer<typeof AddPayoutMethodBodySchema>;

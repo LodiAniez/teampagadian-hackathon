@@ -12,6 +12,7 @@ describe("StripeService", () => {
   beforeEach(async () => {
     mockStripe = {
       setupIntents: { create: vi.fn() },
+      paymentMethods: { retrieve: vi.fn() },
       webhooks: { constructEvent: vi.fn() },
     };
     mockConfigGet = vi.fn();
@@ -68,6 +69,51 @@ describe("StripeService", () => {
       });
 
       await expect(service.createSetupIntent("user-abc")).rejects.toThrow(/no client_secret/);
+    });
+  });
+
+  describe("retrieveCardDetails", () => {
+    it("returns card details for an unattached payment method", async () => {
+      vi.mocked(mockStripe.paymentMethods.retrieve).mockResolvedValueOnce({
+        id: "pm_test",
+        type: "card",
+        customer: null,
+        card: { brand: "visa", last4: "4242", exp_month: 12, exp_year: 2030 },
+      });
+
+      const result = await service.retrieveCardDetails("pm_test");
+
+      expect(result).toEqual({
+        brand: "visa",
+        last4: "4242",
+        expMonth: 12,
+        expYear: 2030,
+        stripePaymentMethodId: "pm_test",
+      });
+    });
+
+    it("rejects when the payment method belongs to a Stripe customer", async () => {
+      vi.mocked(mockStripe.paymentMethods.retrieve).mockResolvedValueOnce({
+        id: "pm_test",
+        type: "card",
+        customer: "cus_other",
+        card: { brand: "visa", last4: "4242", exp_month: 12, exp_year: 2030 },
+      });
+
+      await expect(service.retrieveCardDetails("pm_test")).rejects.toThrow(
+        /belongs to another Stripe customer/,
+      );
+    });
+
+    it("rejects when the payment method is not a card", async () => {
+      vi.mocked(mockStripe.paymentMethods.retrieve).mockResolvedValueOnce({
+        id: "pm_test",
+        type: "us_bank_account",
+        customer: null,
+        card: null,
+      });
+
+      await expect(service.retrieveCardDetails("pm_test")).rejects.toThrow(/not a card/);
     });
   });
 

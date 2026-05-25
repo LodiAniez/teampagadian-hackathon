@@ -10,6 +10,7 @@ import { GeminiModule } from "./modules/integrations/gemini/gemini.module";
 import { StripeModule } from "./modules/integrations/stripe/stripe.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
+import { PayoutMethodsModule } from "./modules/payout-methods/payout-methods.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PaymentsModule } from "./modules/payments/payments.module";
     EmailModule,
     PaymentsModule,
     InvoicesModule,
+    PayoutMethodsModule,
   ],
 })
 export class AppModule {}

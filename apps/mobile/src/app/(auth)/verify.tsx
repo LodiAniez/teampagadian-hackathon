@@ -7,7 +7,9 @@ import { z } from "zod";
 import { Screen } from "@/components/layout/Screen";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
+import { api } from "@/lib/api-client";
 import { supabase } from "@/lib/auth";
+import { pickPostVerifyRoute } from "@/features/profile/utils/post-verify-route";
 
 const schema = z.object({
   token: z
@@ -44,12 +46,14 @@ export default function VerifyScreen() {
       token,
       type: "sms",
     });
-    setIsPending(false);
     if (err || !data.session) {
+      setIsPending(false);
       setError(err?.message ?? "Verification failed");
       return;
     }
-    router.replace("/");
+    const me = await api.auth.me.query().catch(() => null);
+    setIsPending(false);
+    router.replace(pickPostVerifyRoute(me));
   }
 
   return (

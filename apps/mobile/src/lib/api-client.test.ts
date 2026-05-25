@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const VALID_ENV = {
   EXPO_PUBLIC_API_URL: "https://api.example.test",
+  EXPO_PUBLIC_APP_URL: "https://raket.app",
   EXPO_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
   EXPO_PUBLIC_SUPABASE_ANON_KEY: "anon-key-12345",
   EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_12345",
@@ -14,6 +15,7 @@ describe("lib/api-client", () => {
     vi.resetModules();
     process.env = { ...originalEnv };
     delete process.env.EXPO_PUBLIC_API_URL;
+    delete process.env.EXPO_PUBLIC_APP_URL;
     delete process.env.EXPO_PUBLIC_SUPABASE_URL;
     delete process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     delete process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;

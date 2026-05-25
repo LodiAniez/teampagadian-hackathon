@@ -1,15 +1,13 @@
-import { View, Text } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { Screen } from "@/components/layout/Screen";
+import { InvoiceSent } from "@/features/invoices";
 
 export default function InvoiceSentScreen() {
+  const params = useLocalSearchParams<{ id: string }>();
   return (
-    <Screen>
-      <Stack.Screen options={{ title: "Payment", presentation: "modal" }} />
-      <View className="flex-1 items-center justify-center gap-2">
-        <Text className="text-lg font-semibold text-gray-700">Payment received</Text>
-        <Text className="text-sm text-gray-400">Coming soon (TEA-45)</Text>
-      </View>
+    <Screen scroll>
+      <Stack.Screen options={{ title: "Share invoice", presentation: "modal" }} />
+      <InvoiceSent invoiceId={params.id} />
     </Screen>
   );
 }

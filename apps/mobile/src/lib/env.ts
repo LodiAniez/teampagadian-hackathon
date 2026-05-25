@@ -2,6 +2,9 @@ import { z } from "zod";
 
 const schema = z.object({
   EXPO_PUBLIC_API_URL: z.string().url("EXPO_PUBLIC_API_URL must be a valid URL"),
+  // Public web app base URL — used to build the share URL on the invoice success
+  // screen (`${APP_URL}/pay/{invoiceId}`, served by the web /pay/[id] route).
+  EXPO_PUBLIC_APP_URL: z.string().url("EXPO_PUBLIC_APP_URL must be a valid URL"),
   EXPO_PUBLIC_SUPABASE_URL: z.string().url("EXPO_PUBLIC_SUPABASE_URL must be a valid URL"),
   EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, "EXPO_PUBLIC_SUPABASE_ANON_KEY is required"),
   EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: z
@@ -18,6 +21,7 @@ const schema = z.object({
 
 const result = schema.safeParse({
   EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
+  EXPO_PUBLIC_APP_URL: process.env.EXPO_PUBLIC_APP_URL,
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY,

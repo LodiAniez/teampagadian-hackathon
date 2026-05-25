@@ -46,7 +46,8 @@ export function useInvoiceSent(invoiceId: string | undefined) {
     try {
       await Clipboard.setStringAsync(shareUrl);
       showToast("success", "Link copied — paste anywhere");
-    } catch {
+    } catch (err) {
+      console.warn("Clipboard.setStringAsync failed:", err);
       showToast("error", "Couldn't copy link. Try again.");
     }
   }, [shareUrl, showToast]);
@@ -65,10 +66,10 @@ export function useInvoiceSent(invoiceId: string | undefined) {
       return;
     }
     const result = await sendMutation.send({ clientEmail });
-    if (result) {
+    if (result.ok) {
       showToast("success", `Sent to ${clientEmail}`);
-    } else if (sendMutation.error) {
-      showToast("error", sendMutation.error.message);
+    } else {
+      showToast("error", result.error.message);
     }
   }, [invoiceQuery.invoice?.client.email, sendMutation, showToast]);
 
@@ -78,7 +79,11 @@ export function useInvoiceSent(invoiceId: string | undefined) {
   }, [router, invoiceId]);
 
   const onDone = useCallback(() => {
-    router.dismissAll();
+    if (router.canDismiss()) {
+      router.dismissAll();
+    } else {
+      router.replace("/(authed)/(tabs)");
+    }
   }, [router]);
 
   return {

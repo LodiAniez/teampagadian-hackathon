@@ -11,7 +11,8 @@ export interface RenderInvoiceEmailParams {
 // is inlined on the element. Layout uses presentational tables for the same
 // reason (flexbox + grid still fail in Outlook 2016/365 desktop).
 export function renderInvoiceEmail(params: RenderInvoiceEmailParams): string {
-  const { invoice, freelancer, paymentUrl, qrCodeDataUrl } = params;
+  const { invoice, freelancer, paymentUrl } = params;
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=10&data=${encodeURIComponent(paymentUrl)}`;
   const lineItemRows = invoice.lineItems.map(renderLineItemRow).join("");
 
   return `<!DOCTYPE html>
@@ -37,7 +38,7 @@ export function renderInvoiceEmail(params: RenderInvoiceEmailParams): string {
 
 <tr><td align="center" style="padding:24px 32px 8px;">
 <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">Or scan to pay from your phone</p>
-<img src="${escapeAttr(qrCodeDataUrl)}" alt="QR code to pay invoice ${escapeAttr(invoice.number)}" width="160" height="160" style="display:block;border:0;outline:none;text-decoration:none;">
+<img src="${escapeAttr(qrImageUrl)}" alt="QR code to pay invoice ${escapeAttr(invoice.number)}" width="160" height="160" style="display:block;border:0;outline:none;text-decoration:none;">
 </td></tr>
 
 <tr><td style="padding:16px 32px 24px;">

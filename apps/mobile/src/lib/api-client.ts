@@ -12,5 +12,9 @@ export async function authedFetcher(args: ApiFetcherArgs): ReturnType<typeof tsR
 
 export const api = initQueryClient(contract, {
   baseUrl: env.EXPO_PUBLIC_API_URL,
+  // Declares authorization as a base header so ts-rest doesn't require it
+  // per-call. The authedFetcher overwrites the value with the live Supabase
+  // session token before every request.
+  baseHeaders: { authorization: "" },
   api: authedFetcher,
 });

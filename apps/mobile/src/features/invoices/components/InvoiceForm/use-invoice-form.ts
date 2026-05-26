@@ -73,7 +73,10 @@ export function useInvoiceForm() {
       const result = await create.save(values);
       if (result.status !== 201) return;
       if (nextRoute === "send") {
-        router.replace({ pathname: "/invoices/[id]/sent", params: { id: result.body.id } });
+        router.replace({
+          pathname: "/invoices/[id]/sent",
+          params: { id: result.body.id, clientEmail: values.clientEmail ?? "" },
+        });
       } else {
         router.dismissAll();
       }

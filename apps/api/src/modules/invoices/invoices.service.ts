@@ -1,4 +1,13 @@
-import { Injectable, NotFoundException, NotImplementedException } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+  NotImplementedException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Prisma } from "@prisma/client";
 import type { Client as ClientRow } from "@prisma/client";
 import type {
@@ -11,9 +20,13 @@ import type {
   SendInvoiceBody,
   SendInvoiceResponse,
 } from "@raket/contracts";
+import type { EnvConfig } from "@/common/config/env.schema";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { EmailService } from "../integrations/email/email.service";
+import { QrService } from "../integrations/qr/qr.service";
+import { StripeService } from "../integrations/stripe/stripe.service";
 import { InvoiceParserService } from "./invoice-parser.service";
-import { toInvoiceDto } from "./invoices.mapper";
+import { toInvoiceDto, type InvoiceRowWithClientAndLineItems } from "./invoices.mapper";
 
 type ListQuery = {
   cursor?: string;
@@ -24,9 +37,15 @@ type ListQuery = {
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly invoiceParser: InvoiceParserService,
+    private readonly stripeService: StripeService,
+    private readonly qrService: QrService,
+    private readonly emailService: EmailService,
+    private readonly config: ConfigService<EnvConfig, true>,
   ) {}
 
   async list(userId: string, query: ListQuery): Promise<PaginatedResponse<Invoice>> {
@@ -191,17 +210,108 @@ export class InvoicesService {
   }
 
   async send(
-    _userId: string,
-    _invoiceId: string,
-    _body: SendInvoiceBody,
+    userId: string,
+    invoiceId: string,
+    body: SendInvoiceBody,
   ): Promise<SendInvoiceResponse> {
-    throw new NotImplementedException(
-      "send: implement Stripe Checkout + QR + Resend email — see M4 in Linear",
+    const row = await this.findRawInvoice(userId, invoiceId);
+
+    if (row.status === "sent") {
+      if (!row.stripeCheckoutUrl || !row.qrCodeDataUrl) {
+        throw new InternalServerErrorException("Sent invoice is missing Stripe/QR data");
+      }
+      return {
+        invoice: toInvoiceDto(row),
+        checkoutUrl: row.stripeCheckoutUrl,
+        qrCodeDataUrl: row.qrCodeDataUrl,
+      };
+    }
+
+    if (row.status !== "draft") {
+      throw new ConflictException(`Invoice cannot be sent: status is ${row.status}`);
+    }
+
+    const freelancer = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!freelancer) throw new NotFoundException("User not found");
+
+    const publicShareToken = randomBytes(16).toString("base64url");
+
+    const appUrl = this.config.get("NEXT_PUBLIC_APP_URL", { infer: true });
+    const successUrl = `${appUrl}/invoices/${invoiceId}/paid`;
+
+    const session = await this.stripeService.createInvoiceCheckoutSession(
+      { id: row.id, number: row.number, amount: Number(row.amount), currency: row.currency },
+      body.clientEmail,
+      successUrl,
     );
+
+    const qrCodeDataUrl = await this.qrService.toDataUrl(session.url);
+
+    const updated = await this.prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: "sent",
+        sentAt: new Date(),
+        publicShareToken,
+        stripeCheckoutSessionId: session.id,
+        stripeCheckoutUrl: session.url,
+        qrCodeDataUrl,
+      },
+      include: { client: true, lineItems: { orderBy: { position: "asc" } } },
+    });
+
+    // Email failure must not roll back an already-persisted Stripe session.
+    const displayName = freelancer.businessName ?? freelancer.name ?? "Your Freelancer";
+    try {
+      await this.emailService.sendInvoiceEmail({
+        invoice: {
+          number: row.number,
+          amount: formatAmount(Number(row.amount)),
+          currency: row.currency,
+          dueDate: formatDate(row.dueDate),
+          lineItems: row.lineItems.map((li) => ({
+            description: li.description,
+            amount: formatAmount(Number(li.amount)),
+          })),
+          clientName: row.client.name,
+        },
+        freelancer: {
+          displayName,
+          name: freelancer.name ?? "",
+          businessName: freelancer.businessName ?? undefined,
+          contactEmail: "",
+        },
+        paymentUrl: session.url,
+        qrCodeDataUrl,
+        recipientEmail: body.clientEmail,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Email send failed for invoice ${row.number}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
+    return {
+      invoice: toInvoiceDto(updated),
+      checkoutUrl: session.url,
+      qrCodeDataUrl,
+    };
   }
 
   async void(_userId: string, _invoiceId: string): Promise<Invoice> {
     throw new NotImplementedException("void: implement state transition + idempotency");
+  }
+
+  private async findRawInvoice(
+    userId: string,
+    invoiceId: string,
+  ): Promise<InvoiceRowWithClientAndLineItems> {
+    const row = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, userId },
+      include: { client: true, lineItems: { orderBy: { position: "asc" } } },
+    });
+    if (!row) throw new NotFoundException(`Invoice ${invoiceId} not found`);
+    return row;
   }
 }
 
@@ -215,4 +325,15 @@ function isInvoiceNumberConflict(err: unknown): boolean {
   if (Array.isArray(target)) return target.includes("number");
   if (typeof target === "string") return target.includes("number");
   return false;
+}
+
+function formatAmount(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }

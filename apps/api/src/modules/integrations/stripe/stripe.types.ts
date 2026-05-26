@@ -30,6 +30,13 @@ export interface StripeClient {
       } | null;
     }>;
   };
+  checkout: {
+    sessions: {
+      create(
+        params: Stripe.Checkout.SessionCreateParams,
+      ): Promise<{ id: string; url: string | null }>;
+    };
+  };
   webhooks: {
     constructEvent(payload: string | Buffer, header: string, secret: string): WebhookEvent;
   };
@@ -59,6 +66,11 @@ export interface WebhookEvent {
 export interface SetupIntentResult {
   setupIntentId: string;
   clientSecret: string;
+}
+
+export interface CheckoutSessionResult {
+  id: string;
+  url: string;
 }
 
 export const STRIPE_CLIENT = Symbol("STRIPE_CLIENT");

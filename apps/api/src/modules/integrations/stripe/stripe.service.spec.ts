@@ -13,6 +13,7 @@ describe("StripeService", () => {
     mockStripe = {
       setupIntents: { create: vi.fn() },
       paymentMethods: { retrieve: vi.fn() },
+      checkout: { sessions: { create: vi.fn() } },
       webhooks: { constructEvent: vi.fn() },
     };
     mockConfigGet = vi.fn();

@@ -7,16 +7,18 @@ import { AUTH_ME_QUERY_KEY } from "./update-profile-success";
 // cache under AUTH_ME_QUERY_KEY — the same key buildUpdateProfileSuccessHandler
 // invalidates. Without this, an `invalidateQueries({ queryKey: AUTH_ME_QUERY_KEY })`
 // after profile updates would be a silent no-op.
+//
+// Throws on transport / serialization errors. We intentionally don't swallow
+// to null here: a transient failure (network blip, JWT-bridge race) is NOT
+// the same signal as "no profile". pickPostVerifyRoute treats the null case
+// as "unknown state → send to setup-profile" so a thrown error caught by the
+// caller can pass null through that helper for the same safe-default routing.
 export function useFetchMe() {
   const queryClient = useQueryClient();
   return async () => {
-    try {
-      return await queryClient.fetchQuery({
-        queryKey: AUTH_ME_QUERY_KEY,
-        queryFn: () => api.auth.me.query(),
-      });
-    } catch {
-      return null;
-    }
+    return await queryClient.fetchQuery({
+      queryKey: AUTH_ME_QUERY_KEY,
+      queryFn: () => api.auth.me.query(),
+    });
   };
 }

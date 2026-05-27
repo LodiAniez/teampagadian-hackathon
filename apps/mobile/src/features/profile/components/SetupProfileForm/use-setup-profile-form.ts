@@ -27,11 +27,23 @@ export function useSetupProfileForm() {
 
   useEffect(() => {
     let active = true;
-    loadDraft().then((draft) => {
-      if (!active) return;
-      if (draft) form.reset(buildSetupProfileDefaults(draft));
-      setIsDraftHydrated(true);
-    });
+    // .catch + .finally are load-bearing: if loadDraft rejects (AsyncStorage
+    // disk full / unavailable) the .then never fires, setIsDraftHydrated
+    // stays false forever, and the autosave watcher's `if (!isDraftHydrated)
+    // return` guard silently drops every keystroke for the session. The user
+    // would lose all in-progress data on force-close with no indication. On
+    // some RN versions an unhandled rejection also red-screens.
+    loadDraft()
+      .then((draft) => {
+        if (!active) return;
+        if (draft) form.reset(buildSetupProfileDefaults(draft));
+      })
+      .catch(() => {
+        // Draft unreadable — start fresh. Autosave will rebuild it.
+      })
+      .finally(() => {
+        if (active) setIsDraftHydrated(true);
+      });
     return () => {
       active = false;
     };

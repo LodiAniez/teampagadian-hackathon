@@ -51,7 +51,15 @@ export default function VerifyScreen() {
       setError(err?.message ?? "Verification failed");
       return;
     }
-    const me = await fetchMe();
+    // fetchMe throws on network / JWT-bridge-race. Falling through to
+    // pickPostVerifyRoute(null) lands the user on /setup-profile, which is
+    // the safer default than the dashboard when the profile state is unknown.
+    let me: Awaited<ReturnType<typeof fetchMe>> | null = null;
+    try {
+      me = await fetchMe();
+    } catch {
+      // intentional: pickPostVerifyRoute(null) handles the routing
+    }
     setIsPending(false);
     router.replace(pickPostVerifyRoute(me));
   }

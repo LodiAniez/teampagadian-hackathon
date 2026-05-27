@@ -16,7 +16,8 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "smoke:settle": "tsx scripts/settle-smoke.ts"
   },
   "dependencies": {
     "@google/genai": "^2.6.0",

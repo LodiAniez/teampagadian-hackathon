@@ -1,9 +1,16 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Prisma, type Payment } from "@prisma/client";
 import { erc20Abi, parseAbiItem, parseUnits, type Hex } from "viem";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { MorphPublicClient, MorphWalletClient } from "./morph-clients";
-import { SettlementFailedError, type SettleArgs, type SettlementConfig } from "./settlement.types";
+import {
+  MORPH_PUBLIC_CLIENT,
+  MORPH_WALLET_CLIENT,
+  SETTLEMENT_CONFIG,
+  SettlementFailedError,
+  type SettleArgs,
+  type SettlementConfig,
+} from "./settlement.types";
 
 // Mock USDC on Morph Hoodi uses 6 decimals (matches real Circle USDC).
 const USDC_DECIMALS = 6;
@@ -27,9 +34,9 @@ export class SettlementService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly walletClient: MorphWalletClient,
-    private readonly publicClient: MorphPublicClient,
-    private readonly config: SettlementConfig,
+    @Inject(MORPH_WALLET_CLIENT) private readonly walletClient: MorphWalletClient,
+    @Inject(MORPH_PUBLIC_CLIENT) private readonly publicClient: MorphPublicClient,
+    @Inject(SETTLEMENT_CONFIG) private readonly config: SettlementConfig,
   ) {}
 
   // Idempotent settlement: signs a USDC.transfer from the hot wallet to the

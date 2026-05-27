@@ -1,5 +1,11 @@
 import type { Hex } from "viem";
 
+// DI tokens — strings (not Symbols) so they show up clearly in Nest's
+// error messages. Match the pattern used by STRIPE_CLIENT in stripe.types.ts.
+export const MORPH_PUBLIC_CLIENT = "MORPH_PUBLIC_CLIENT";
+export const MORPH_WALLET_CLIENT = "MORPH_WALLET_CLIENT";
+export const SETTLEMENT_CONFIG = "SETTLEMENT_CONFIG";
+
 // Pre-computed inputs SettlementService.settle() consumes. FX math (rate,
 // fee amount, fee percent, PHP total) is the orchestrator's job (TEA-42);
 // this slice just records what's been computed and drives the on-chain

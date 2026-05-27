@@ -201,7 +201,11 @@ model Payment {
   amountPhp              Decimal       @map("amount_php") @db.Decimal(14, 2)
   fxRate                 Decimal       @map("fx_rate") @db.Decimal(12, 6)
   fxFeeAmount            Decimal       @map("fx_fee_amount") @db.Decimal(14, 2)
-  fxFeePercent           Decimal       @map("fx_fee_percent") @db.Decimal(5, 4)
+  // Decimal(6,4) caps at 99.9999% (was 9.9999% with (5,4) — too narrow; an
+  // FX fee at or above 10% would overflow at INSERT time and silently fail
+  // the webhook into Stripe's retry loop). DB CHECK below enforces the
+  // 0..1 domain (0.0000 = 0%, 1.0000 = 100%).
+  fxFeePercent           Decimal       @map("fx_fee_percent") @db.Decimal(6, 4)
   stripeFeeAmount        Decimal?      @map("stripe_fee_amount") @db.Decimal(14, 2)
   morphTxHash            String?       @unique @map("morph_tx_hash")
   morphTxStatus          MorphTxStatus @default(SETTLING) @map("morph_tx_status")

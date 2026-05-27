@@ -14,17 +14,41 @@ END $$;
 -- CreateEnum
 CREATE TYPE "morph_tx_status" AS ENUM ('settling', 'settled', 'failed');
 
+-- Safety guard: payouts rows can carry only values that map cleanly to the
+-- new enum. The CASE expression below handles `succeeded → delivered`; any
+-- other unexpected legacy value (e.g. a value introduced by an ad-hoc fix-up
+-- script) would silently widen into the new enum. Assert that no such values
+-- exist so the migration fails fast with a clear message instead of letting
+-- malformed data through.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM payouts
+    WHERE status::text NOT IN ('pending', 'succeeded', 'failed')
+    LIMIT 1
+  ) THEN
+    RAISE EXCEPTION 'payouts contains status values outside the expected old enum set (pending|succeeded|failed); backfill before re-running so the CASE remap below is exhaustive.';
+  END IF;
+END $$;
+
 -- AlterEnum
 -- Swap PayoutStatus to PENDING | PROCESSING | DELIVERED | FAILED.
--- `succeeded` is removed (no rows exist; PaymentsService is still a stub).
--- `processing` + `delivered` are added so the (mocked) Coins.ph leg has
--- in-flight + landed states distinct from on-chain settlement.
+-- `succeeded` is mapped to `delivered` — the rename is a semantic correction
+-- (per prd.md §7 + architecture §7: PHP landed in GCash, not just on-chain).
+-- `processing` is new (in-flight mocked Coins.ph leg). The CASE in USING does
+-- the data-preserving remap so the migration works on populated tables too
+-- (not just empty ones).
 -- No inner BEGIN/COMMIT here: Prisma wraps each migration file in a
 -- transaction, so an explicit COMMIT would close the outer tx early and
 -- leave statements below running in auto-commit.
 CREATE TYPE "payout_status_new" AS ENUM ('pending', 'processing', 'delivered', 'failed');
 ALTER TABLE "public"."payouts" ALTER COLUMN "status" DROP DEFAULT;
-ALTER TABLE "payouts" ALTER COLUMN "status" TYPE "payout_status_new" USING ("status"::text::"payout_status_new");
+ALTER TABLE "payouts" ALTER COLUMN "status" TYPE "payout_status_new" USING (
+  CASE status::text
+    WHEN 'succeeded' THEN 'delivered'
+    ELSE status::text
+  END::"payout_status_new"
+);
 ALTER TYPE "payout_status" RENAME TO "payout_status_old";
 ALTER TYPE "payout_status_new" RENAME TO "payout_status";
 DROP TYPE "public"."payout_status_old";
@@ -55,7 +79,14 @@ ALTER TABLE "payments" RENAME COLUMN "currency_source" TO "amount_received_curre
 ALTER TABLE "payments" ALTER COLUMN "amount_received_currency" SET DATA TYPE VARCHAR(3);
 
 ALTER TABLE "payments" DROP COLUMN "fx_fee_pct";
-ALTER TABLE "payments" ADD COLUMN "fx_fee_percent" DECIMAL(5,4) NOT NULL;
+-- DECIMAL(6,4): max 99.9999% — DECIMAL(5,4) topped out at 9.9999% and would
+-- overflow on any fee tier ≥10% (latent today since fees are 1–3%, but a
+-- misconfigured rate would crash the webhook with no user-facing error).
+-- CHECK constraint enforces the 0..1 domain at the DB layer so the app
+-- doesn't have to be the only line of defense.
+ALTER TABLE "payments" ADD COLUMN "fx_fee_percent" DECIMAL(6,4) NOT NULL;
+ALTER TABLE "payments" ADD CONSTRAINT "payments_fx_fee_percent_range_check"
+  CHECK (fx_fee_percent BETWEEN 0 AND 1);
 
 ALTER TABLE "payments" ADD COLUMN "user_id" UUID NOT NULL;
 ALTER TABLE "payments" ADD COLUMN "stripe_payment_intent_id" TEXT NOT NULL;

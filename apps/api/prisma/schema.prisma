@@ -222,6 +222,17 @@ model Payment {
   stripeFeeAmount        Decimal?      @map("stripe_fee_amount") @db.Decimal(14, 2)
   morphTxHash            String?       @unique @map("morph_tx_hash")
   morphTxStatus          MorphTxStatus @default(PENDING) @map("morph_tx_status")
+  // Incremented at each PENDING→SETTLING transition (i.e. each viem attempt
+  // for this PI). SettlementService bails to FAILED past MAX_RETRIES so a
+  // persistent RPC outage stops looping eventually instead of riding Stripe's
+  // 3-day webhook redelivery window forever.
+  morphRetryCount        Int           @default(0) @map("morph_retry_count")
+  // Block number captured at Phase A via publicClient.getBlockNumber(). Used
+  // as the `fromBlock` for the SettlementService balance-precheck on retries
+  // — narrows the Transfer-event scan to a small window instead of genesis.
+  // Nullable for forward-compatibility (rows that predate this feature have
+  // no anchor; precheck falls back to a wide fixed-window scan in that case).
+  morphAnchorBlock       BigInt?       @map("morph_anchor_block")
   paidAt                 DateTime      @map("paid_at")
   createdAt              DateTime      @default(now()) @map("created_at")
   updatedAt              DateTime      @updatedAt @map("updated_at")

@@ -13,6 +13,7 @@ export default function InvoiceSentScreen() {
     if (id && clientEmail) {
       send(id, clientEmail).catch(() => {});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (isSending) {

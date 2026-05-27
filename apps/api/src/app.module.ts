@@ -12,6 +12,7 @@ import { StripeModule } from "./modules/integrations/stripe/stripe.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { PayoutMethodsModule } from "./modules/payout-methods/payout-methods.module";
+import { SettlementModule } from "./modules/settlement/settlement.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PayoutMethodsModule } from "./modules/payout-methods/payout-methods.mod
     PaymentsModule,
     InvoicesModule,
     PayoutMethodsModule,
+    SettlementModule,
   ],
 })
 export class AppModule {}

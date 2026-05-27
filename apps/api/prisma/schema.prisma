@@ -166,7 +166,17 @@ model InvoiceLineItem {
 // Payments & payouts (settlement)
 // ---------------------------------------------------------------------------
 
+// Settlement state machine. The `PENDING` → `SETTLING` distinction is
+// load-bearing: the TEA-76 retry sweep queries `SETTLING` to find on-chain
+// transfers that need resubmission, and a newly-inserted Payment row (no
+// viem call yet) must NOT match that filter or the sweep would double-submit
+// every fresh payment. Transitions:
+//   PENDING   — Payment row written by the webhook; on-chain leg not started
+//   SETTLING  — `writeContract` submitted, waiting on `waitForTransactionReceipt`
+//   SETTLED   — receipt confirmed; `morphTxHash` populated
+//   FAILED    — retries exhausted; ops escalation required
 enum MorphTxStatus {
+  PENDING  @map("pending")
   SETTLING @map("settling")
   SETTLED  @map("settled")
   FAILED   @map("failed")
@@ -201,14 +211,17 @@ model Payment {
   amountPhp              Decimal       @map("amount_php") @db.Decimal(14, 2)
   fxRate                 Decimal       @map("fx_rate") @db.Decimal(12, 6)
   fxFeeAmount            Decimal       @map("fx_fee_amount") @db.Decimal(14, 2)
-  // Decimal(6,4) caps at 99.9999% (was 9.9999% with (5,4) — too narrow; an
-  // FX fee at or above 10% would overflow at INSERT time and silently fail
-  // the webhook into Stripe's retry loop). DB CHECK below enforces the
-  // 0..1 domain (0.0000 = 0%, 1.0000 = 100%).
-  fxFeePercent           Decimal       @map("fx_fee_percent") @db.Decimal(6, 4)
+  // Stored as a DECIMAL FRACTION, NOT a percentage:
+  //   1% fee → 0.0100   |   3% fee → 0.0300   |   100% fee → 1.0000
+  // Decimal(5,4) = max 9.9999 as a number (= 999.99% in fraction terms),
+  // well beyond any meaningful fee. The DB CHECK in the migration narrows
+  // the domain to [0, 1] so a misconfigured app value can't slip in.
+  // DO NOT store the percentage value (e.g. 8.0 for 8%) — that will fail
+  // the CHECK and crash the webhook into Stripe's retry loop.
+  fxFeePercent           Decimal       @map("fx_fee_percent") @db.Decimal(5, 4)
   stripeFeeAmount        Decimal?      @map("stripe_fee_amount") @db.Decimal(14, 2)
   morphTxHash            String?       @unique @map("morph_tx_hash")
-  morphTxStatus          MorphTxStatus @default(SETTLING) @map("morph_tx_status")
+  morphTxStatus          MorphTxStatus @default(PENDING) @map("morph_tx_status")
   paidAt                 DateTime      @map("paid_at")
   createdAt              DateTime      @default(now()) @map("created_at")
   updatedAt              DateTime      @updatedAt @map("updated_at")

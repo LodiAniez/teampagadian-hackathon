@@ -12,7 +12,13 @@ BEGIN
 END $$;
 
 -- CreateEnum
-CREATE TYPE "morph_tx_status" AS ENUM ('settling', 'settled', 'failed');
+-- pending: row created by the webhook; on-chain leg not started. Default.
+--          The TEA-76 retry sweep MUST NOT pick these up.
+-- settling: writeContract submitted, awaiting waitForTransactionReceipt.
+--           This is what the sweep targets.
+-- settled: receipt confirmed; morph_tx_hash populated.
+-- failed: retries exhausted; ops manual recovery.
+CREATE TYPE "morph_tx_status" AS ENUM ('pending', 'settling', 'settled', 'failed');
 
 -- Safety guard: payouts rows can carry only values that map cleanly to the
 -- new enum. The CASE expression below handles `succeeded → delivered`; any
@@ -79,12 +85,15 @@ ALTER TABLE "payments" RENAME COLUMN "currency_source" TO "amount_received_curre
 ALTER TABLE "payments" ALTER COLUMN "amount_received_currency" SET DATA TYPE VARCHAR(3);
 
 ALTER TABLE "payments" DROP COLUMN "fx_fee_pct";
--- DECIMAL(6,4): max 99.9999% — DECIMAL(5,4) topped out at 9.9999% and would
--- overflow on any fee tier ≥10% (latent today since fees are 1–3%, but a
--- misconfigured rate would crash the webhook with no user-facing error).
--- CHECK constraint enforces the 0..1 domain at the DB layer so the app
--- doesn't have to be the only line of defense.
-ALTER TABLE "payments" ADD COLUMN "fx_fee_percent" DECIMAL(6,4) NOT NULL;
+-- fx_fee_percent stores a DECIMAL FRACTION, not a percentage:
+--   1% fee → 0.0100   |   3% fee → 0.0300   |   100% fee → 1.0000
+-- DECIMAL(5,4) holds up to 9.9999 as a number (999.99% in fraction terms),
+-- way above any meaningful fee. The CHECK below is the real safety guard:
+-- it pins the domain to [0, 1] so a misconfigured rate, or a future writer
+-- that mistakenly stores a percent value (e.g. 8.0 for 8%), fails loudly
+-- at INSERT instead of silently overflowing or corrupting downstream math.
+-- DO NOT store the percent value — the CHECK will reject it.
+ALTER TABLE "payments" ADD COLUMN "fx_fee_percent" DECIMAL(5,4) NOT NULL;
 ALTER TABLE "payments" ADD CONSTRAINT "payments_fx_fee_percent_range_check"
   CHECK (fx_fee_percent BETWEEN 0 AND 1);
 
@@ -93,7 +102,12 @@ ALTER TABLE "payments" ADD COLUMN "stripe_payment_intent_id" TEXT NOT NULL;
 ALTER TABLE "payments" ADD COLUMN "fx_fee_amount" DECIMAL(14,2) NOT NULL;
 ALTER TABLE "payments" ADD COLUMN "stripe_fee_amount" DECIMAL(14,2);
 ALTER TABLE "payments" ADD COLUMN "morph_tx_hash" TEXT;
-ALTER TABLE "payments" ADD COLUMN "morph_tx_status" "morph_tx_status" NOT NULL DEFAULT 'settling';
+-- DEFAULT 'pending' (not 'settling'): a fresh Payment row from the Stripe
+-- webhook has not yet attempted any on-chain work. The TEA-76 sweep targets
+-- 'settling' (genuinely in-flight) — defaulting to 'settling' would make
+-- every brand-new payment look stuck, the sweep would resubmit, and the
+-- freelancer's GCash would receive the amount twice.
+ALTER TABLE "payments" ADD COLUMN "morph_tx_status" "morph_tx_status" NOT NULL DEFAULT 'pending';
 
 -- payments never had updatedAt; add it per api-convention §5 ("createdAt,
 -- updatedAt on every table"). NOT NULL with CURRENT_TIMESTAMP default is the

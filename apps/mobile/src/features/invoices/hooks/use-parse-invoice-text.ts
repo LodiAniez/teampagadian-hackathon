@@ -1,6 +1,6 @@
 import { api } from "@/lib/api-client";
+import { normalizeError } from "@/lib/error";
 import type { ParsedInvoiceDraft, SupportedCurrency } from "@raket/contracts";
-import { normalizeError } from "../utils/error";
 
 export type ParseInvoiceTextInput = {
   text: string;

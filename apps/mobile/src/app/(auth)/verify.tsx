@@ -8,6 +8,7 @@ import { Screen } from "@/components/layout/Screen";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { supabase } from "@/lib/auth";
+import { pickPostVerifyRoute, useFetchMe } from "@/features/profile";
 
 const schema = z.object({
   token: z
@@ -23,6 +24,7 @@ export default function VerifyScreen() {
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fetchMe = useFetchMe();
   const {
     control,
     handleSubmit,
@@ -44,12 +46,22 @@ export default function VerifyScreen() {
       token,
       type: "sms",
     });
-    setIsPending(false);
     if (err || !data.session) {
+      setIsPending(false);
       setError(err?.message ?? "Verification failed");
       return;
     }
-    router.replace("/");
+    // fetchMe throws on network / JWT-bridge-race. Falling through to
+    // pickPostVerifyRoute(null) lands the user on /setup-profile, which is
+    // the safer default than the dashboard when the profile state is unknown.
+    let me: Awaited<ReturnType<typeof fetchMe>> | null = null;
+    try {
+      me = await fetchMe();
+    } catch {
+      // intentional: pickPostVerifyRoute(null) handles the routing
+    }
+    setIsPending(false);
+    router.replace(pickPostVerifyRoute(me));
   }
 
   return (

@@ -35,6 +35,7 @@ model User {
   payoutMethods PayoutMethod[]
   clients       Client[]
   invoices      Invoice[]
+  payments      Payment[]
 
   @@map("users")
 }
@@ -53,13 +54,13 @@ enum PayoutMethodType {
 }
 
 model PayoutMethod {
-  id        String          @id @default(uuid()) @db.Uuid
-  userId    String          @map("user_id") @db.Uuid
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
   type      PayoutMethodType
   details   Json
-  isDefault Boolean  @default(false) @map("is_default")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  isDefault Boolean          @default(false) @map("is_default")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   payouts Payout[]
@@ -165,49 +166,101 @@ model InvoiceLineItem {
 // Payments & payouts (settlement)
 // ---------------------------------------------------------------------------
 
-model Payment {
-  id             String   @id @default(uuid()) @db.Uuid
-  invoiceId      String   @map("invoice_id") @db.Uuid
-  amountSource   Decimal  @map("amount_source") @db.Decimal(18, 2)
-  currencySource String   @map("currency_source") @db.VarChar(3)
-  amountPhp      Decimal  @map("amount_php") @db.Decimal(18, 2)
-  fxRate         Decimal  @map("fx_rate") @db.Decimal(18, 6)
-  fxFeePct       Decimal  @default(1.0) @map("fx_fee_pct") @db.Decimal(5, 2)
-  stripeChargeId String?  @unique @map("stripe_charge_id")
-  paidAt         DateTime @map("paid_at")
-  createdAt      DateTime @default(now()) @map("created_at")
+// Settlement state machine. The `PENDING` → `SETTLING` distinction is
+// load-bearing: the TEA-76 retry sweep queries `SETTLING` to find on-chain
+// transfers that need resubmission, and a newly-inserted Payment row (no
+// viem call yet) must NOT match that filter or the sweep would double-submit
+// every fresh payment. Transitions:
+//   PENDING   — Payment row written by the webhook; on-chain leg not started
+//   SETTLING  — `writeContract` submitted, waiting on `waitForTransactionReceipt`
+//   SETTLED   — receipt confirmed; `morphTxHash` populated
+//   FAILED    — retries exhausted; ops escalation required
+enum MorphTxStatus {
+  PENDING  @map("pending")
+  SETTLING @map("settling")
+  SETTLED  @map("settled")
+  FAILED   @map("failed")
 
-  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
-  payouts Payout[]
-
-  @@index([invoiceId])
-  @@map("payments")
+  @@map("morph_tx_status")
 }
 
 enum PayoutStatus {
-  pending
-  succeeded
-  failed
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  DELIVERED  @map("delivered")
+  FAILED     @map("failed")
 
   @@map("payout_status")
 }
 
+model Payment {
+  id                     String        @id @default(uuid()) @db.Uuid
+  invoiceId              String        @map("invoice_id") @db.Uuid
+  userId                 String        @map("user_id") @db.Uuid
+  // Set at webhook time when the Stripe PaymentIntent succeeds. Distinct from
+  // Invoice.stripePaymentIntentId, which is set at checkout-session creation:
+  // same PI ID, different lifecycle stage. The webhook handler resolves the
+  // invoice by joining on this column.
+  stripePaymentIntentId  String        @unique @map("stripe_payment_intent_id")
+  // Not unique: a PaymentIntent can produce multiple charge IDs across retries
+  // (e.g. 3DS fallback). stripePaymentIntentId is the idempotency key — see
+  // TEA-76. Informational only; never the dedup target.
+  stripeChargeId         String?       @map("stripe_charge_id")
+  amountReceived         Decimal       @map("amount_received") @db.Decimal(14, 2)
+  amountReceivedCurrency String        @map("amount_received_currency") @db.VarChar(3)
+  amountPhp              Decimal       @map("amount_php") @db.Decimal(14, 2)
+  fxRate                 Decimal       @map("fx_rate") @db.Decimal(12, 6)
+  fxFeeAmount            Decimal       @map("fx_fee_amount") @db.Decimal(14, 2)
+  // Stored as a DECIMAL FRACTION, NOT a percentage:
+  //   1% fee → 0.0100   |   3% fee → 0.0300   |   100% fee → 1.0000
+  // Decimal(5,4) = max 9.9999 as a number (= 999.99% in fraction terms),
+  // well beyond any meaningful fee. The DB CHECK in the migration narrows
+  // the domain to [0, 1] so a misconfigured app value can't slip in.
+  // DO NOT store the percentage value (e.g. 8.0 for 8%) — that will fail
+  // the CHECK and crash the webhook into Stripe's retry loop.
+  fxFeePercent           Decimal       @map("fx_fee_percent") @db.Decimal(5, 4)
+  stripeFeeAmount        Decimal?      @map("stripe_fee_amount") @db.Decimal(14, 2)
+  morphTxHash            String?       @unique @map("morph_tx_hash")
+  morphTxStatus          MorphTxStatus @default(PENDING) @map("morph_tx_status")
+  paidAt                 DateTime      @map("paid_at")
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  payout  Payout?
+
+  // Access patterns:
+  //   - (userId, paidAt DESC) — dashboard "recent payments".
+  //   - morphTxStatus — settlement retry/recovery sweep (TEA-76).
+  //   - invoiceId — single-invoice payment lookup + ON DELETE RESTRICT check
+  //     against Invoice. The composite above can't serve this (Postgres
+  //     can't use a composite index when the leading column is absent).
+  @@index([userId, paidAt(sort: Desc)])
+  @@index([morphTxStatus])
+  @@index([invoiceId])
+  @@map("payments")
+}
+
 model Payout {
   id             String       @id @default(uuid()) @db.Uuid
-  paymentId      String       @map("payment_id") @db.Uuid
+  paymentId      String       @unique @map("payment_id") @db.Uuid
   payoutMethodId String       @map("payout_method_id") @db.Uuid
-  amountPhp      Decimal      @map("amount_php") @db.Decimal(18, 2)
-  status         PayoutStatus @default(pending)
+  amountPhp      Decimal      @map("amount_php") @db.Decimal(14, 2)
+  status         PayoutStatus @default(PENDING)
   externalTxnId  String?      @map("external_txn_id")
-  failureReason  String?      @map("failure_reason")
-  settledAt      DateTime?    @map("settled_at")
+  completedAt    DateTime?    @map("completed_at")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   payoutMethod PayoutMethod @relation(fields: [payoutMethodId], references: [id], onDelete: Restrict)
 
-  @@index([paymentId])
+  // Access patterns:
+  //   - status — ops queries ("which payouts are stuck PROCESSING").
+  //   - payoutMethodId — list payouts for a method + ON DELETE RESTRICT check
+  //     against PayoutMethod. paymentId is unique-indexed via @unique above.
+  @@index([status])
   @@index([payoutMethodId])
   @@map("payouts")
 }

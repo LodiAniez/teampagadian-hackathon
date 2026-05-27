@@ -7,6 +7,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { EmailModule } from "./modules/integrations/email/email.module";
 import { FxModule } from "./modules/integrations/fx/fx.module";
 import { GeminiModule } from "./modules/integrations/gemini/gemini.module";
+import { QrModule } from "./modules/integrations/qr/qr.module";
 import { StripeModule } from "./modules/integrations/stripe/stripe.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
@@ -22,6 +23,7 @@ import { PayoutMethodsModule } from "./modules/payout-methods/payout-methods.mod
     AuthModule,
     FxModule,
     StripeModule,
+    QrModule,
     EmailModule,
     PaymentsModule,
     InvoicesModule,

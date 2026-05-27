@@ -1,3 +1,16 @@
+-- Safety guard: this migration adds NOT NULL columns to `payments` without
+-- defaults (user_id, stripe_payment_intent_id, fx_fee_amount, fx_fee_percent).
+-- That only works on an empty table. PaymentsService is a stub at the time
+-- of writing, so the assumption holds — but assert it explicitly so a future
+-- re-run against a populated DB fails fast with a clear message instead of
+-- mid-statement.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM payments LIMIT 1) THEN
+    RAISE EXCEPTION 'payments table is non-empty; the NOT NULL adds in this migration require a backfill — split into nullable-add + backfill + SET NOT NULL before re-running.';
+  END IF;
+END $$;
+
 -- CreateEnum
 CREATE TYPE "morph_tx_status" AS ENUM ('settling', 'settled', 'failed');
 
@@ -18,16 +31,15 @@ DROP TYPE "public"."payout_status_old";
 ALTER TABLE "payouts" ALTER COLUMN "status" SET DEFAULT 'pending';
 
 -- DropIndex
-DROP INDEX "payments_invoice_id_idx";
-
--- DropIndex
+-- Drop stripe_charge_id's UNIQUE constraint — see schema comment on
+-- Payment.stripeChargeId. The PI is now the idempotency key; a charge ID
+-- can recur across PI retries (e.g. 3DS fallback).
 DROP INDEX "payments_stripe_charge_id_key";
 
 -- DropIndex
+-- Drop the plain index on payouts.payment_id — it's superseded by the new
+-- UNIQUE index (payouts_payment_id_key) created below for the 1:1 relation.
 DROP INDEX "payouts_payment_id_idx";
-
--- DropIndex
-DROP INDEX "payouts_payout_method_id_idx";
 
 -- AlterTable: payments
 -- Renames preserved as RENAME COLUMN (clean audit trail; matches the path
@@ -37,7 +49,10 @@ ALTER TABLE "payments" RENAME COLUMN "amount_source" TO "amount_received";
 ALTER TABLE "payments" ALTER COLUMN "amount_received" SET DATA TYPE DECIMAL(14,2);
 
 ALTER TABLE "payments" RENAME COLUMN "currency_source" TO "amount_received_currency";
-ALTER TABLE "payments" ALTER COLUMN "amount_received_currency" SET DATA TYPE TEXT;
+-- Keep as VARCHAR(3) — matches the ISO-4217 currency constraint already
+-- enforced on User.defaultCurrency / Client.defaultCurrency / Invoice.currency
+-- (api-convention §5: currencies are always String @db.VarChar(3)).
+ALTER TABLE "payments" ALTER COLUMN "amount_received_currency" SET DATA TYPE VARCHAR(3);
 
 ALTER TABLE "payments" DROP COLUMN "fx_fee_pct";
 ALTER TABLE "payments" ADD COLUMN "fx_fee_percent" DECIMAL(5,4) NOT NULL;
@@ -49,13 +64,21 @@ ALTER TABLE "payments" ADD COLUMN "stripe_fee_amount" DECIMAL(14,2);
 ALTER TABLE "payments" ADD COLUMN "morph_tx_hash" TEXT;
 ALTER TABLE "payments" ADD COLUMN "morph_tx_status" "morph_tx_status" NOT NULL DEFAULT 'settling';
 
+-- payments never had updatedAt; add it per api-convention §5 ("createdAt,
+-- updatedAt on every table"). NOT NULL with CURRENT_TIMESTAMP default is the
+-- safe pattern: empty table → trivial; Prisma's @updatedAt then maintains
+-- the value from the application side on each subsequent write.
+ALTER TABLE "payments" ADD COLUMN "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
 ALTER TABLE "payments" ALTER COLUMN "amount_php" SET DATA TYPE DECIMAL(14,2);
 ALTER TABLE "payments" ALTER COLUMN "fx_rate" SET DATA TYPE DECIMAL(12,6);
 
 -- AlterTable: payouts
+-- Keeping updated_at (api-convention §5). failure_reason is dropped per spec
+-- — TEA-76 surfaces failure context via logs until structured metadata is
+-- needed.
 ALTER TABLE "payouts" RENAME COLUMN "settled_at" TO "completed_at";
 ALTER TABLE "payouts" DROP COLUMN "failure_reason";
-ALTER TABLE "payouts" DROP COLUMN "updated_at";
 ALTER TABLE "payouts" ALTER COLUMN "amount_php" SET DATA TYPE DECIMAL(14,2);
 
 -- CreateIndex
@@ -69,6 +92,11 @@ CREATE INDEX "payments_user_id_paid_at_idx" ON "payments"("user_id", "paid_at" D
 
 -- CreateIndex
 CREATE INDEX "payments_morph_tx_status_idx" ON "payments"("morph_tx_status");
+
+-- Note: payments_invoice_id_idx and payouts_payout_method_id_idx are
+-- intentionally preserved from the init migration (api-convention §5: index
+-- every FK). Earlier drafts of this migration dropped them; the DROP
+-- statements have been removed, so init's CREATE INDEX still owns these.
 
 -- CreateIndex
 CREATE UNIQUE INDEX "payouts_payment_id_key" ON "payouts"("payment_id");

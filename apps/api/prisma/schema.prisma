@@ -187,10 +187,17 @@ model Payment {
   id                     String        @id @default(uuid()) @db.Uuid
   invoiceId              String        @map("invoice_id") @db.Uuid
   userId                 String        @map("user_id") @db.Uuid
+  // Set at webhook time when the Stripe PaymentIntent succeeds. Distinct from
+  // Invoice.stripePaymentIntentId, which is set at checkout-session creation:
+  // same PI ID, different lifecycle stage. The webhook handler resolves the
+  // invoice by joining on this column.
   stripePaymentIntentId  String        @unique @map("stripe_payment_intent_id")
+  // Not unique: a PaymentIntent can produce multiple charge IDs across retries
+  // (e.g. 3DS fallback). stripePaymentIntentId is the idempotency key — see
+  // TEA-76. Informational only; never the dedup target.
   stripeChargeId         String?       @map("stripe_charge_id")
   amountReceived         Decimal       @map("amount_received") @db.Decimal(14, 2)
-  amountReceivedCurrency String        @map("amount_received_currency")
+  amountReceivedCurrency String        @map("amount_received_currency") @db.VarChar(3)
   amountPhp              Decimal       @map("amount_php") @db.Decimal(14, 2)
   fxRate                 Decimal       @map("fx_rate") @db.Decimal(12, 6)
   fxFeeAmount            Decimal       @map("fx_fee_amount") @db.Decimal(14, 2)
@@ -200,18 +207,21 @@ model Payment {
   morphTxStatus          MorphTxStatus @default(SETTLING) @map("morph_tx_status")
   paidAt                 DateTime      @map("paid_at")
   createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
   payout  Payout?
 
-  // Intended access patterns: (userId, paidAt DESC) for dashboard "recent
-  // payments"; morphTxStatus for the settlement retry/recovery sweep
-  // (TEA-76). FK columns invoice_id / user_id are not separately indexed —
-  // the access path is always via these composite indexes or the unique
-  // constraints below.
+  // Access patterns:
+  //   - (userId, paidAt DESC) — dashboard "recent payments".
+  //   - morphTxStatus — settlement retry/recovery sweep (TEA-76).
+  //   - invoiceId — single-invoice payment lookup + ON DELETE RESTRICT check
+  //     against Invoice. The composite above can't serve this (Postgres
+  //     can't use a composite index when the leading column is absent).
   @@index([userId, paidAt(sort: Desc)])
   @@index([morphTxStatus])
+  @@index([invoiceId])
   @@map("payments")
 }
 
@@ -224,12 +234,16 @@ model Payout {
   externalTxnId  String?      @map("external_txn_id")
   completedAt    DateTime?    @map("completed_at")
   createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   payoutMethod PayoutMethod @relation(fields: [payoutMethodId], references: [id], onDelete: Restrict)
 
-  // paymentId is unique-indexed via @unique; payoutMethodId access is via
-  // the FK; status drives ops queries ("which payouts are stuck PROCESSING").
+  // Access patterns:
+  //   - status — ops queries ("which payouts are stuck PROCESSING").
+  //   - payoutMethodId — list payouts for a method + ON DELETE RESTRICT check
+  //     against PayoutMethod. paymentId is unique-indexed via @unique above.
   @@index([status])
+  @@index([payoutMethodId])
   @@map("payouts")
 }

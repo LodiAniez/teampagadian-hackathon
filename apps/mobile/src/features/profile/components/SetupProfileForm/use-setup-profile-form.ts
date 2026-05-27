@@ -9,7 +9,7 @@ import {
   toUpdateProfileBody,
   type SetupProfileFormValues,
 } from "../../utils/form-values";
-import { clearDraft, loadDraft, saveDraft } from "../../utils/draft-storage";
+import { loadDraft, saveDraft } from "../../utils/draft-storage";
 import { submitSetupProfile } from "./submit";
 
 const AUTOSAVE_DEBOUNCE_MS = 200;
@@ -39,21 +39,13 @@ export function useSetupProfileForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    const subscription = form.watch((values) => {
-      if (!isDraftHydrated) return;
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-      debounceTimer.current = setTimeout(() => {
-        void saveDraft(toUpdateProfileBody(values as SetupProfileFormValues));
-      }, AUTOSAVE_DEBOUNCE_MS);
-    });
-    return () => {
-      subscription.unsubscribe();
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    };
-  }, [form, isDraftHydrated]);
-
+  // Subscription ORDER MATTERS — RHF fires watch subscribers in registration
+  // order. The currency→rate sync MUST register before the autosave so a
+  // defaultCurrency change patches defaultHourlyRate.currency BEFORE autosave
+  // captures values for persistence. Otherwise a force-close inside the
+  // debounce window would persist a draft with mismatched currencies, and on
+  // reload the sync (which only fires on user-initiated changes, not
+  // form.reset) wouldn't repair it.
   useEffect(() => {
     const subscription = form.watch((values, info) => {
       if (info.name !== "defaultCurrency") return;
@@ -70,21 +62,39 @@ export function useSetupProfileForm() {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      if (!isDraftHydrated) return;
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      debounceTimer.current = setTimeout(() => {
+        void saveDraft(toUpdateProfileBody(values));
+      }, AUTOSAVE_DEBOUNCE_MS);
+    });
+    return () => {
+      subscription.unsubscribe();
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [form, isDraftHydrated]);
+
   const onSubmit = form.handleSubmit(async (values) => {
-    const result = await submitSetupProfile({
+    await submitSetupProfile({
       values,
       save: (body) => update.save(body),
       navigate: () => router.replace("/"),
     });
-    if (result.ok) {
-      await clearDraft();
-    }
+    // The mutation's onSuccess (buildUpdateProfileSuccessHandler) owns the
+    // draft clear + cache invalidation. Don't double-call here.
   });
 
   return {
     form,
     onSubmit,
-    isSubmitting: update.isSaving,
+    // formState.isSubmitting stays true for the full handleSubmit async
+    // lifetime (save → navigate). update.isSaving covers only the mutation
+    // window. ORing both ensures the button never flashes back to idle
+    // between the PATCH resolving and the screen transitioning away.
+    isSubmitting: form.formState.isSubmitting || update.isSaving,
     submitError: update.error,
   };
 }

@@ -40,4 +40,14 @@ describe("buildUpdateProfileSuccessHandler", () => {
       queryKey: AUTH_ME_QUERY_KEY,
     });
   });
+
+  it("resolves cleanly when invalidateQueries throws (must not block navigation)", async () => {
+    const deps = makeDeps();
+    deps.queryClient.invalidateQueries.mockRejectedValueOnce(new Error("QueryClient torn down"));
+    const onSuccess = buildUpdateProfileSuccessHandler(deps);
+    // If onSuccess rejected here, mutateAsync would reject, submitSetupProfile
+    // would return { ok: false }, and the user would be stranded on the wizard
+    // despite the server already accepting the PATCH.
+    await expect(onSuccess()).resolves.toBeUndefined();
+  });
 });

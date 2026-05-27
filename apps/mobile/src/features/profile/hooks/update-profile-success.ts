@@ -15,6 +15,13 @@ export function buildUpdateProfileSuccessHandler(deps: SuccessDeps) {
       // AsyncStorage can fail (full disk, etc.). Don't block the redirect to dashboard;
       // a leftover draft is harmless — the wizard only shows when name === null.
     }
-    await deps.queryClient.invalidateQueries({ queryKey: AUTH_ME_QUERY_KEY });
+    try {
+      await deps.queryClient.invalidateQueries({ queryKey: AUTH_ME_QUERY_KEY });
+    } catch {
+      // QueryClient can be torn down mid-flight on fast navigation. Letting this throw
+      // would reject the onSuccess callback, making mutateAsync look like a failure to
+      // the caller — and the user would be stranded on the wizard despite a 200 from
+      // the server. A stale cache will refetch next time anyway.
+    }
   };
 }

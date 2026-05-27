@@ -26,6 +26,17 @@ export type SetupProfileFormValues = {
   bir2303Election: z.infer<typeof BirElectionSchema>;
 };
 
+// What form.watch emits while the form is mounting/resetting or between
+// keystrokes — every field can be transiently undefined. toUpdateProfileBody
+// accepts this directly so the autosave path doesn't have to cast.
+export type SetupProfileFormValuesPartial = {
+  name?: string;
+  businessName?: string;
+  defaultCurrency?: string;
+  defaultHourlyRate?: { amount?: number; currency?: string };
+  bir2303Election?: SetupProfileFormValues["bir2303Election"];
+};
+
 const DEFAULT_CURRENCY = "USD";
 
 export function buildSetupProfileDefaults(draft: UpdateProfileDto | null): SetupProfileFormValues {
@@ -47,22 +58,25 @@ export function applyBusinessNameAutoFill(values: SetupProfileFormValues): Setup
   return { ...values, businessName: `${trimmedName} Freelance` };
 }
 
-export function toUpdateProfileBody(values: SetupProfileFormValues): UpdateProfileDto {
+export function toUpdateProfileBody(values: SetupProfileFormValuesPartial): UpdateProfileDto {
+  // Accepts the partial shape form.watch emits as well as fully-validated
+  // submit values. ?? "" guards keep autosave safe during the mount/reset
+  // window when fields are transiently undefined.
   const body: UpdateProfileDto = {};
-  const name = values.name.trim();
+  const name = (values.name ?? "").trim();
   if (name.length > 0) body.name = name;
-  const businessName = values.businessName.trim();
+  const businessName = (values.businessName ?? "").trim();
   if (businessName.length > 0) body.businessName = businessName;
-  if (values.defaultCurrency.trim().length > 0) {
-    body.defaultCurrency = values.defaultCurrency.trim();
-  }
-  if (typeof values.defaultHourlyRate.amount === "number" && values.defaultHourlyRate.amount > 0) {
+  const defaultCurrency = (values.defaultCurrency ?? "").trim();
+  if (defaultCurrency.length > 0) body.defaultCurrency = defaultCurrency;
+  const rateAmount = values.defaultHourlyRate?.amount;
+  if (typeof rateAmount === "number" && rateAmount > 0) {
     body.defaultHourlyRate = {
-      amount: values.defaultHourlyRate.amount,
-      currency: values.defaultHourlyRate.currency,
+      amount: rateAmount,
+      currency: values.defaultHourlyRate?.currency ?? (defaultCurrency || "USD"),
     };
   }
-  body.bir2303Election = values.bir2303Election;
+  if (values.bir2303Election) body.bir2303Election = values.bir2303Election;
   const parsed = UpdateProfileBodySchema.safeParse(body);
   return parsed.success ? parsed.data : body;
 }

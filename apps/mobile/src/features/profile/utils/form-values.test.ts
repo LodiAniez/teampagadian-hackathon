@@ -127,6 +127,24 @@ describe("toUpdateProfileBody", () => {
     expect(body.name).toBe("Ada");
     expect(body.businessName).toBe("Northwind");
   });
+
+  it("tolerates the partial shape form.watch emits (no crash on undefined fields)", () => {
+    // form.watch emits SetupProfileFormValuesPartial during the brief
+    // mount/reset window. Defensive ?? "" inside the function means
+    // autosave can't crash + swallow the error via `void`.
+    const body = toUpdateProfileBody({ bir2303Election: "8_percent" });
+    expect(body).toEqual({ bir2303Election: "8_percent" });
+  });
+
+  it("falls back to defaultCurrency for an unspecified rate currency", () => {
+    const body = toUpdateProfileBody({
+      name: "Ada",
+      defaultCurrency: "EUR",
+      defaultHourlyRate: { amount: 90 },
+      bir2303Election: "8_percent",
+    });
+    expect(body.defaultHourlyRate).toEqual({ amount: 90, currency: "EUR" });
+  });
 });
 
 describe("SetupProfileFormSchema", () => {

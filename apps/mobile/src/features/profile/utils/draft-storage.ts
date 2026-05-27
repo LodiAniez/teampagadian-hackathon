@@ -1,14 +1,14 @@
-import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UpdateProfileBodySchema, type UpdateProfileDto } from "@raket/contracts";
 
 const DRAFT_KEY = "raket.profile-setup.draft.v1";
 
 export async function saveDraft(draft: UpdateProfileDto): Promise<void> {
-  await SecureStore.setItemAsync(DRAFT_KEY, JSON.stringify(draft));
+  await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 }
 
 export async function loadDraft(): Promise<UpdateProfileDto | null> {
-  const raw = await SecureStore.getItemAsync(DRAFT_KEY);
+  const raw = await AsyncStorage.getItem(DRAFT_KEY);
   if (!raw) return null;
   let parsed: unknown;
   try {
@@ -21,5 +21,5 @@ export async function loadDraft(): Promise<UpdateProfileDto | null> {
 }
 
 export async function clearDraft(): Promise<void> {
-  await SecureStore.deleteItemAsync(DRAFT_KEY);
+  await AsyncStorage.removeItem(DRAFT_KEY);
 }

@@ -12,7 +12,7 @@ export function buildUpdateProfileSuccessHandler(deps: SuccessDeps) {
     try {
       await deps.clearDraft();
     } catch {
-      // SecureStore can fail (locked keychain, etc.). Don't block the redirect to dashboard;
+      // AsyncStorage can fail (full disk, etc.). Don't block the redirect to dashboard;
       // a leftover draft is harmless — the wizard only shows when name === null.
     }
     await deps.queryClient.invalidateQueries({ queryKey: AUTH_ME_QUERY_KEY });

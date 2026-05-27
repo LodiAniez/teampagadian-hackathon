@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type { UpdateProfileDto } from "@raket/contracts";
 import { api } from "@/lib/api-client";
-import { normalizeError } from "@/features/invoices/utils/error";
+import { normalizeError } from "@/lib/error";
 import { clearDraft } from "../utils/draft-storage";
 import { buildUpdateProfileSuccessHandler } from "./update-profile-success";
 

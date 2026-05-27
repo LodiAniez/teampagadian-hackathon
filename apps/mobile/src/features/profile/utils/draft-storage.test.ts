@@ -1,21 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { secureStoreState } = vi.hoisted(() => ({
-  secureStoreState: { store: new Map<string, string>() },
+const { asyncStorageState } = vi.hoisted(() => ({
+  asyncStorageState: { store: new Map<string, string>() },
 }));
 
-vi.mock("expo-secure-store", () => ({
-  getItemAsync: vi.fn(async (key: string) => secureStoreState.store.get(key) ?? null),
-  setItemAsync: vi.fn(async (key: string, value: string) => {
-    secureStoreState.store.set(key, value);
-  }),
-  deleteItemAsync: vi.fn(async (key: string) => {
-    secureStoreState.store.delete(key);
-  }),
+vi.mock("@react-native-async-storage/async-storage", () => ({
+  default: {
+    getItem: vi.fn(async (key: string) => asyncStorageState.store.get(key) ?? null),
+    setItem: vi.fn(async (key: string, value: string) => {
+      asyncStorageState.store.set(key, value);
+    }),
+    removeItem: vi.fn(async (key: string) => {
+      asyncStorageState.store.delete(key);
+    }),
+  },
 }));
 
 beforeEach(() => {
-  secureStoreState.store.clear();
+  asyncStorageState.store.clear();
 });
 
 describe("draft-storage", () => {
@@ -41,15 +43,15 @@ describe("draft-storage", () => {
   });
 
   it("load returns null when stored value is not valid JSON", async () => {
-    const SecureStore = await import("expo-secure-store");
-    await SecureStore.setItemAsync("raket.profile-setup.draft.v1", "{not-json");
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    await AsyncStorage.setItem("raket.profile-setup.draft.v1", "{not-json");
     const { loadDraft } = await import("./draft-storage");
     await expect(loadDraft()).resolves.toBeNull();
   });
 
   it("load returns null when stored value fails schema validation", async () => {
-    const SecureStore = await import("expo-secure-store");
-    await SecureStore.setItemAsync(
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    await AsyncStorage.setItem(
       "raket.profile-setup.draft.v1",
       JSON.stringify({ defaultHourlyRate: "not-an-object" }),
     );

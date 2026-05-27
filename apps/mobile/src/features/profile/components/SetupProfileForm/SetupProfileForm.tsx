@@ -3,7 +3,7 @@ import { Controller } from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { TextField } from "@/components/ui/TextField";
-import { parseNumber } from "@/features/invoices/utils/parse-number";
+import { parseNumber } from "@/lib/parse-number";
 import { useSetupProfileForm } from "./use-setup-profile-form";
 import {
   BIR_OPTIONS,
@@ -73,15 +73,7 @@ export function SetupProfileForm({ onOpenBirInfo }: SetupProfileFormProps) {
             <SegmentedControl
               options={CURRENCY_OPTIONS}
               value={field.value || "USD"}
-              onChange={(next) => {
-                field.onChange(next);
-                const rate = f.form.getValues("defaultHourlyRate");
-                f.form.setValue(
-                  "defaultHourlyRate",
-                  { amount: rate?.amount, currency: next },
-                  { shouldDirty: true, shouldValidate: false },
-                );
-              }}
+              onChange={field.onChange}
             />
           )}
         />

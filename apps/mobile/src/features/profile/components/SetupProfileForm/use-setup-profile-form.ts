@@ -54,6 +54,22 @@ export function useSetupProfileForm() {
     };
   }, [form, isDraftHydrated]);
 
+  useEffect(() => {
+    const subscription = form.watch((values, info) => {
+      if (info.name !== "defaultCurrency") return;
+      const next = values.defaultCurrency;
+      if (!next) return;
+      const rate = form.getValues("defaultHourlyRate");
+      if (rate?.currency === next) return;
+      form.setValue(
+        "defaultHourlyRate",
+        { amount: rate?.amount, currency: next },
+        { shouldDirty: true, shouldValidate: false },
+      );
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   const onSubmit = form.handleSubmit(async (values) => {
     const result = await submitSetupProfile({
       values,

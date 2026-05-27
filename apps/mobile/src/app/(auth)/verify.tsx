@@ -7,9 +7,8 @@ import { z } from "zod";
 import { Screen } from "@/components/layout/Screen";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
-import { api } from "@/lib/api-client";
 import { supabase } from "@/lib/auth";
-import { pickPostVerifyRoute } from "@/features/profile/utils/post-verify-route";
+import { pickPostVerifyRoute, useFetchMe } from "@/features/profile";
 
 const schema = z.object({
   token: z
@@ -25,6 +24,7 @@ export default function VerifyScreen() {
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fetchMe = useFetchMe();
   const {
     control,
     handleSubmit,
@@ -51,7 +51,7 @@ export default function VerifyScreen() {
       setError(err?.message ?? "Verification failed");
       return;
     }
-    const me = await api.auth.me.query().catch(() => null);
+    const me = await fetchMe();
     setIsPending(false);
     router.replace(pickPostVerifyRoute(me));
   }

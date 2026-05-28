@@ -160,7 +160,12 @@ describe("InvoicesService.send", () => {
     expect(result.invoice.status).toBe("sent");
     expect(mockPrisma.invoice.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: INVOICE_ID, userId: USER_ID, status: "draft", sentAt: null },
+        where: expect.objectContaining({
+          id: INVOICE_ID,
+          userId: USER_ID,
+          status: "draft",
+          OR: [{ sentAt: null }, { sentAt: { lt: expect.any(Date) } }],
+        }),
       }),
     );
     expect(mockPrisma.invoice.update).toHaveBeenCalledWith(
@@ -205,6 +210,59 @@ describe("InvoicesService.send", () => {
 
     await expect(service.send(USER_ID, INVOICE_ID, SEND_BODY)).rejects.toThrow(ConflictException);
     expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
+  });
+
+  it("releases the lock (sentAt → null) when Stripe session creation fails so retry isn't blocked", async () => {
+    const row = buildInvoiceRow();
+    mockPrisma.invoice.findFirst.mockResolvedValue(row);
+    // First updateMany acquires the lock; second releases it on failure.
+    mockPrisma.invoice.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 1 });
+    mockPrisma.user.findUnique.mockResolvedValue(buildFreelancer());
+    mockStripe.createInvoiceCheckoutSession.mockRejectedValue(new Error("Stripe timeout"));
+
+    await expect(service.send(USER_ID, INVOICE_ID, SEND_BODY)).rejects.toThrow("Stripe timeout");
+
+    expect(mockPrisma.invoice.updateMany).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.invoice.updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: INVOICE_ID,
+          userId: USER_ID,
+          status: "draft",
+          sentAt: expect.any(Date),
+        }),
+        data: { sentAt: null },
+      }),
+    );
+    expect(mockPrisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it("reclaims a stale lock (status=draft + sentAt older than threshold) so a crashed send is recoverable", async () => {
+    // The lock acquire is one updateMany call; we assert its where shape
+    // accepts either sentAt:null OR sentAt < staleThreshold.
+    const row = buildInvoiceRow();
+    const updatedRow = buildInvoiceRow({
+      status: "sent",
+      stripeCheckoutUrl: CHECKOUT_URL,
+      qrCodeDataUrl: QR_DATA_URL,
+    });
+    mockPrisma.invoice.findFirst.mockResolvedValue(row);
+    mockPrisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.user.findUnique.mockResolvedValue(buildFreelancer());
+    mockStripe.createInvoiceCheckoutSession.mockResolvedValue({
+      id: "cs_test_abc",
+      url: CHECKOUT_URL,
+    });
+    mockQr.toDataUrl.mockResolvedValue(QR_DATA_URL);
+    mockEmail.sendInvoiceEmail.mockResolvedValue({ id: "re_abc" });
+    mockPrisma.invoice.update.mockResolvedValue(updatedRow);
+
+    await service.send(USER_ID, INVOICE_ID, SEND_BODY);
+
+    const lockCall = mockPrisma.invoice.updateMany.mock.calls[0][0];
+    expect(lockCall.where.OR).toEqual([{ sentAt: null }, { sentAt: { lt: expect.any(Date) } }]);
   });
 
   it("returns existing data without re-creating a Stripe session when already sent", async () => {

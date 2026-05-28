@@ -233,11 +233,23 @@ export class InvoicesService {
 
     // Optimistic lock against concurrent send() calls (network retry, double-tap,
     // StrictMode double-invoke). The first writer flips sentAt from null → now and
-    // wins the right to create the Stripe session; the loser sees count=0 and
-    // either returns the cached result (if the winner finished) or 409s.
+    // wins the right to create the Stripe session; the loser sees count=0.
+    //
+    // Stale-lock recovery: if a previous send crashed between the lock acquire
+    // and the final status-flip, sentAt is set but status is still "draft" — the
+    // row would be permanently un-resendable otherwise. Treat a sentAt older
+    // than STALE_LOCK_MS on a draft row as abandoned and reclaim it. The
+    // try/catch below also releases the lock on failure so this path is rare.
+    const STALE_LOCK_MS = 60_000;
     const sendStartedAt = new Date();
+    const staleThreshold = new Date(sendStartedAt.getTime() - STALE_LOCK_MS);
     const lock = await this.prisma.invoice.updateMany({
-      where: { id: invoiceId, userId, status: "draft", sentAt: null },
+      where: {
+        id: invoiceId,
+        userId,
+        status: "draft",
+        OR: [{ sentAt: null }, { sentAt: { lt: staleThreshold } }],
+      },
       data: { sentAt: sendStartedAt },
     });
     if (lock.count === 0) {
@@ -252,33 +264,54 @@ export class InvoicesService {
       throw new ConflictException("Invoice send is already in progress");
     }
 
-    const freelancer = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!freelancer) throw new NotFoundException("User not found");
+    let session: { id: string; url: string };
+    let qrCodeDataUrl: string;
+    let updated: InvoiceRowWithClientAndLineItems;
+    let freelancer: Awaited<ReturnType<typeof this.prisma.user.findUnique>>;
+    try {
+      freelancer = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!freelancer) throw new NotFoundException("User not found");
 
-    const publicShareToken = randomBytes(16).toString("base64url");
+      const publicShareToken = randomBytes(16).toString("base64url");
 
-    const appUrl = this.config.get("NEXT_PUBLIC_APP_URL", { infer: true });
-    const successUrl = `${appUrl}/invoices/${invoiceId}/paid`;
+      const appUrl = this.config.get("NEXT_PUBLIC_APP_URL", { infer: true });
+      const successUrl = `${appUrl}/invoices/${invoiceId}/paid`;
 
-    const session = await this.stripeService.createInvoiceCheckoutSession(
-      { id: row.id, number: row.number, amount: Number(row.amount), currency: row.currency },
-      body.clientEmail,
-      successUrl,
-    );
+      session = await this.stripeService.createInvoiceCheckoutSession(
+        { id: row.id, number: row.number, amount: Number(row.amount), currency: row.currency },
+        body.clientEmail,
+        successUrl,
+      );
 
-    const qrCodeDataUrl = await this.qrService.toDataUrl(session.url);
+      qrCodeDataUrl = await this.qrService.toDataUrl(session.url);
 
-    const updated = await this.prisma.invoice.update({
-      where: { id: invoiceId },
-      data: {
-        status: "sent",
-        publicShareToken,
-        stripeCheckoutSessionId: session.id,
-        stripeCheckoutUrl: session.url,
-        qrCodeDataUrl,
-      },
-      include: { client: true, lineItems: { orderBy: { position: "asc" } } },
-    });
+      updated = await this.prisma.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          status: "sent",
+          publicShareToken,
+          stripeCheckoutSessionId: session.id,
+          stripeCheckoutUrl: session.url,
+          qrCodeDataUrl,
+        },
+        include: { client: true, lineItems: { orderBy: { position: "asc" } } },
+      });
+    } catch (err) {
+      // Release the lock so the user can retry without waiting for STALE_LOCK_MS.
+      // Guard on sentAt: sendStartedAt so we don't clobber a lock acquired by
+      // another in-flight call that legitimately won the race.
+      await this.prisma.invoice
+        .updateMany({
+          where: { id: invoiceId, userId, status: "draft", sentAt: sendStartedAt },
+          data: { sentAt: null },
+        })
+        .catch((releaseErr) => {
+          this.logger.error(
+            `Failed to release send lock for invoice ${invoiceId}: ${releaseErr instanceof Error ? releaseErr.message : releaseErr}`,
+          );
+        });
+      throw err;
+    }
 
     // Email failure must not roll back an already-persisted Stripe session.
     const displayName = freelancer.businessName ?? freelancer.name ?? "Your Freelancer";

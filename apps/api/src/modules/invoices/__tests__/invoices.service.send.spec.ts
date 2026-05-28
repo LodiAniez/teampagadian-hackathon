@@ -91,7 +91,11 @@ const SEND_BODY: SendInvoiceBody = { clientEmail: "ap@acme.com" };
 describe("InvoicesService.send", () => {
   let service: InvoicesService;
   let mockPrisma: {
-    invoice: { findFirst: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+    invoice: {
+      findFirst: ReturnType<typeof vi.fn>;
+      update: ReturnType<typeof vi.fn>;
+      updateMany: ReturnType<typeof vi.fn>;
+    };
     user: { findUnique: ReturnType<typeof vi.fn> };
   };
   let mockStripe: { createInvoiceCheckoutSession: ReturnType<typeof vi.fn> };
@@ -100,7 +104,7 @@ describe("InvoicesService.send", () => {
 
   beforeEach(async () => {
     mockPrisma = {
-      invoice: { findFirst: vi.fn(), update: vi.fn() },
+      invoice: { findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
       user: { findUnique: vi.fn() },
     };
     mockStripe = { createInvoiceCheckoutSession: vi.fn() };
@@ -139,6 +143,7 @@ describe("InvoicesService.send", () => {
       qrCodeDataUrl: QR_DATA_URL,
     });
     mockPrisma.invoice.findFirst.mockResolvedValue(row);
+    mockPrisma.invoice.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.user.findUnique.mockResolvedValue(buildFreelancer());
     mockStripe.createInvoiceCheckoutSession.mockResolvedValue({
       id: "cs_test_abc",
@@ -153,6 +158,11 @@ describe("InvoicesService.send", () => {
     expect(result.checkoutUrl).toBe(CHECKOUT_URL);
     expect(result.qrCodeDataUrl).toBe(QR_DATA_URL);
     expect(result.invoice.status).toBe("sent");
+    expect(mockPrisma.invoice.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: INVOICE_ID, userId: USER_ID, status: "draft", sentAt: null },
+      }),
+    );
     expect(mockPrisma.invoice.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: INVOICE_ID },
@@ -162,6 +172,39 @@ describe("InvoicesService.send", () => {
     expect(mockEmail.sendInvoiceEmail).toHaveBeenCalledWith(
       expect.objectContaining({ recipientEmail: "ap@acme.com" }),
     );
+    const emailPayload = mockEmail.sendInvoiceEmail.mock.calls[0][0];
+    expect(emailPayload.freelancer).not.toHaveProperty("contactEmail");
+  });
+
+  it("loses the lock race and returns the winner's cached Stripe/QR data without creating a new session", async () => {
+    const draftRow = buildInvoiceRow();
+    const wonRow = buildInvoiceRow({
+      status: "sent",
+      stripeCheckoutUrl: CHECKOUT_URL,
+      qrCodeDataUrl: QR_DATA_URL,
+    });
+    // Two findFirst calls: first sees draft (pre-lock), second sees the
+    // winner's already-persisted sent row.
+    mockPrisma.invoice.findFirst.mockResolvedValueOnce(draftRow).mockResolvedValueOnce(wonRow);
+    mockPrisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+
+    const result = await service.send(USER_ID, INVOICE_ID, SEND_BODY);
+
+    expect(result.checkoutUrl).toBe(CHECKOUT_URL);
+    expect(result.qrCodeDataUrl).toBe(QR_DATA_URL);
+    expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
+    expect(mockEmail.sendInvoiceEmail).not.toHaveBeenCalled();
+    expect(mockPrisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it("throws ConflictException when the lock is lost mid-flight (winner has not finished)", async () => {
+    const draftRow = buildInvoiceRow();
+    const inFlightRow = buildInvoiceRow({ sentAt: new Date() });
+    mockPrisma.invoice.findFirst.mockResolvedValueOnce(draftRow).mockResolvedValueOnce(inFlightRow);
+    mockPrisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.send(USER_ID, INVOICE_ID, SEND_BODY)).rejects.toThrow(ConflictException);
+    expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
   });
 
   it("returns existing data without re-creating a Stripe session when already sent", async () => {
@@ -200,6 +243,7 @@ describe("InvoicesService.send", () => {
       qrCodeDataUrl: QR_DATA_URL,
     });
     mockPrisma.invoice.findFirst.mockResolvedValue(row);
+    mockPrisma.invoice.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.user.findUnique.mockResolvedValue(buildFreelancer());
     mockStripe.createInvoiceCheckoutSession.mockResolvedValue({
       id: "cs_test_abc",

@@ -57,7 +57,9 @@ export interface FreelancerEmailData {
   // Structured signature fields per TEA-36 AC ("name, business name, contact").
   name: string;
   businessName?: string;
-  contactEmail: string;
+  // Optional: User model currently has no email column (phone is the unique
+  // identifier). Template + plain-text render skip the line when omitted.
+  contactEmail?: string;
 }
 
 export interface SendInvoiceEmailParams {

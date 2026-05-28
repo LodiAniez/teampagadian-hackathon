@@ -231,6 +231,27 @@ export class InvoicesService {
       throw new ConflictException(`Invoice cannot be sent: status is ${row.status}`);
     }
 
+    // Optimistic lock against concurrent send() calls (network retry, double-tap,
+    // StrictMode double-invoke). The first writer flips sentAt from null → now and
+    // wins the right to create the Stripe session; the loser sees count=0 and
+    // either returns the cached result (if the winner finished) or 409s.
+    const sendStartedAt = new Date();
+    const lock = await this.prisma.invoice.updateMany({
+      where: { id: invoiceId, userId, status: "draft", sentAt: null },
+      data: { sentAt: sendStartedAt },
+    });
+    if (lock.count === 0) {
+      const current = await this.findRawInvoice(userId, invoiceId);
+      if (current.status === "sent" && current.stripeCheckoutUrl && current.qrCodeDataUrl) {
+        return {
+          invoice: toInvoiceDto(current),
+          checkoutUrl: current.stripeCheckoutUrl,
+          qrCodeDataUrl: current.qrCodeDataUrl,
+        };
+      }
+      throw new ConflictException("Invoice send is already in progress");
+    }
+
     const freelancer = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!freelancer) throw new NotFoundException("User not found");
 
@@ -251,7 +272,6 @@ export class InvoicesService {
       where: { id: invoiceId },
       data: {
         status: "sent",
-        sentAt: new Date(),
         publicShareToken,
         stripeCheckoutSessionId: session.id,
         stripeCheckoutUrl: session.url,
@@ -279,7 +299,6 @@ export class InvoicesService {
           displayName,
           name: freelancer.name ?? "",
           businessName: freelancer.businessName ?? undefined,
-          contactEmail: "",
         },
         paymentUrl: session.url,
         qrCodeDataUrl,

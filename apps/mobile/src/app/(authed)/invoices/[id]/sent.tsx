@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Screen } from "@/components/layout/Screen";
@@ -9,12 +9,17 @@ export default function InvoiceSentScreen() {
   const router = useRouter();
   const { send, result, isSending, error } = useSendInvoice();
 
+  // Strict Mode double-invokes effects in dev, and Expo Router can remount the
+  // screen on back-gesture restore. A ref guards against firing send() twice —
+  // the server is idempotent but extra round-trips waste time and the second
+  // catch swallows the response.
+  const sentRef = useRef(false);
   useEffect(() => {
-    if (id && clientEmail) {
-      send(id, clientEmail).catch(() => {});
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (sentRef.current) return;
+    if (!id || !clientEmail) return;
+    sentRef.current = true;
+    send(id, clientEmail).catch(() => {});
+  }, [id, clientEmail, send]);
 
   if (isSending) {
     return (

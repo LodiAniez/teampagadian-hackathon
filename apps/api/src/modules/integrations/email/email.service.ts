@@ -7,7 +7,20 @@ import {
   type SendInvoiceEmailParams,
   type SendInvoiceEmailResult,
 } from "./email.types";
-import { renderInvoiceEmail, renderInvoiceEmailText } from "./templates/invoice-email";
+import {
+  QR_CONTENT_ID,
+  renderInvoiceEmail,
+  renderInvoiceEmailText,
+} from "./templates/invoice-email";
+
+// Splits `data:image/png;base64,XXXX...` → { contentType, content }. Returns
+// null if the value isn't a recognisable PNG data URI; caller falls back to
+// sending without the inline attachment rather than crashing the send.
+function parsePngDataUrl(dataUrl: string): { contentType: string; content: string } | null {
+  const match = /^data:(image\/png);base64,(.+)$/.exec(dataUrl);
+  if (!match) return null;
+  return { contentType: match[1], content: match[2] };
+}
 
 const DEFAULT_FROM = "onboarding@resend.dev";
 
@@ -33,8 +46,23 @@ export class EmailService {
       invoice: params.invoice,
       freelancer: params.freelancer,
       paymentUrl: params.paymentUrl,
-      qrCodeDataUrl: params.qrCodeDataUrl,
     };
+
+    // CID inline attachment. Gmail strips base64 `data:` URIs in `<img src>`,
+    // so the template references `cid:qr-invoice` and we attach the PNG bytes
+    // here. If the data URL is malformed we send without the QR rather than
+    // failing the email — the payment URL is the primary call-to-action.
+    const qr = parsePngDataUrl(params.qrCodeDataUrl);
+    const attachments = qr
+      ? [
+          {
+            content: qr.content,
+            filename: "invoice-qr.png",
+            content_id: QR_CONTENT_ID,
+            content_type: qr.contentType,
+          },
+        ]
+      : undefined;
 
     // resend.emails.send() resolves to a { data, error } envelope for HTTP-level
     // failures, but the underlying fetch throws on transport faults (DNS,
@@ -49,6 +77,7 @@ export class EmailService {
         subject: `Invoice ${params.invoice.number} from ${params.freelancer.displayName}`,
         html: renderInvoiceEmail(renderParams),
         text: renderInvoiceEmailText(renderParams),
+        attachments,
       });
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);

@@ -99,7 +99,7 @@ describe("EmailService", () => {
       expect(payload.from).toBe("onboarding@resend.dev");
     });
 
-    it("renders the invoice template into the email html with paymentUrl and QR", async () => {
+    it("renders the invoice template into the email html with paymentUrl and a CID QR reference", async () => {
       mockConfigGet.mockReturnValue(undefined);
       vi.mocked(mockResend.emails.send).mockResolvedValueOnce({
         data: { id: "resend_id_abc" },
@@ -110,9 +110,43 @@ describe("EmailService", () => {
 
       const payload = vi.mocked(mockResend.emails.send).mock.calls[0][0];
       expect(payload.html).toContain("https://checkout.stripe.com/c/pay/cs_test_abc123");
-      expect(payload.html).toContain("data:image/png;base64,iVBORw0KGgo=");
+      expect(payload.html).toContain('src="cid:qr-invoice"');
+      expect(payload.html).not.toContain("data:image/png;base64");
       expect(payload.html).toContain("Landing page design");
       expect(payload.html).toContain("Brand kit");
+    });
+
+    it("attaches the QR PNG inline so Gmail (which strips data: URIs) can render it", async () => {
+      mockConfigGet.mockReturnValue(undefined);
+      vi.mocked(mockResend.emails.send).mockResolvedValueOnce({
+        data: { id: "resend_id_abc" },
+        error: null,
+      });
+
+      await service.sendInvoiceEmail(buildParams());
+
+      const payload = vi.mocked(mockResend.emails.send).mock.calls[0][0];
+      expect(payload.attachments).toEqual([
+        expect.objectContaining({
+          content: "iVBORw0KGgo=",
+          content_id: "qr-invoice",
+          content_type: "image/png",
+          filename: expect.stringMatching(/\.png$/),
+        }),
+      ]);
+    });
+
+    it("omits the QR attachment when qrCodeDataUrl is malformed (still sends the email)", async () => {
+      mockConfigGet.mockReturnValue(undefined);
+      vi.mocked(mockResend.emails.send).mockResolvedValueOnce({
+        data: { id: "resend_id_abc" },
+        error: null,
+      });
+
+      await service.sendInvoiceEmail(buildParams({ qrCodeDataUrl: "not-a-data-url" }));
+
+      const payload = vi.mocked(mockResend.emails.send).mock.calls[0][0];
+      expect(payload.attachments).toBeUndefined();
     });
 
     it("includes a plain-text fallback alongside the html", async () => {

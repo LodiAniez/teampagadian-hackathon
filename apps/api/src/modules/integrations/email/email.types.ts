@@ -21,6 +21,18 @@ export interface ResendSendPayload {
   subject: string;
   html: string;
   text?: string;
+  attachments?: ResendAttachment[];
+}
+
+// Mirrors Resend's attachment shape. `content` is a base64-encoded string;
+// `content_id` enables CID inline references (`<img src="cid:foo">`) which is
+// the only reliable way to embed images in Gmail — base64 `data:` URIs in
+// `<img src>` are stripped by Gmail's image proxy.
+export interface ResendAttachment {
+  content: string;
+  filename: string;
+  content_id?: string;
+  content_type?: string;
 }
 
 /**

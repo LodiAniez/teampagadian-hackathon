@@ -25,7 +25,6 @@ function buildParams(overrides: Partial<RenderInvoiceEmailParams> = {}): RenderI
       contactEmail: "juan@juanstudio.com",
     },
     paymentUrl: "https://checkout.stripe.com/c/pay/cs_test_abc123",
-    qrCodeDataUrl: "data:image/png;base64,iVBORw0KGgo=",
     ...overrides,
   };
 }
@@ -37,10 +36,10 @@ describe("renderInvoiceEmail", () => {
     expect(html).toMatch(/<a[^>]*href="https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_abc123"/);
   });
 
-  it("includes the QR code as an inline image", () => {
+  it("references the QR via cid: so it can be attached inline (Gmail strips data: URIs)", () => {
     const html = renderInvoiceEmail(buildParams());
 
-    expect(html).toMatch(/<img[^>]*src="data:image\/png;base64,iVBORw0KGgo="/);
+    expect(html).toMatch(/<img[^>]*src="cid:qr-invoice"/);
   });
 
   it("includes the payment URL as a copy-paste fallback", () => {

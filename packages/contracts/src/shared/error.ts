@@ -6,6 +6,7 @@ export const ErrorCodeSchema = z.enum([
   "FORBIDDEN",
   "NOT_FOUND",
   "CONFLICT",
+  "FILE_TOO_LARGE",
   "RATE_LIMITED",
   "INTERNAL",
 ]);

@@ -142,4 +142,72 @@ describe("InvoiceParserService", () => {
     expect(result.lineItems[0].quantity).toBeNull();
     expect(result.warnings.some((w) => w.includes("Quantity not found"))).toBe(true);
   });
+
+  describe("parseFromFile", () => {
+    const pdfBuffer = Buffer.from("%PDF-1.4 fake", "utf8");
+
+    function stubGeminiFile(raw: RawParsedInvoice): void {
+      geminiMock.parseInvoiceFromFile.mockResolvedValue(raw);
+    }
+
+    it("delegates to gemini.parseInvoiceFromFile with file + mimeType + defaultCurrency", async () => {
+      stubGeminiFile(baseRaw);
+
+      await service.parseFromFile(pdfBuffer, "application/pdf", "PHP");
+
+      expect(geminiMock.parseInvoiceFromFile).toHaveBeenCalledWith(
+        pdfBuffer,
+        "application/pdf",
+        "PHP",
+      );
+    });
+
+    it("returns a clean draft passed through with no warnings", async () => {
+      stubGeminiFile(baseRaw);
+      const result = await service.parseFromFile(pdfBuffer, "application/pdf");
+
+      expect(result.warnings).toEqual([]);
+      expect(result.lineItems).toEqual([baseLineItem]);
+      expect(ParsedInvoiceDraftSchema.safeParse(result).success).toBe(true);
+    });
+
+    it("applies the same sanitization as the text path (negative rate → null + warn)", async () => {
+      stubGeminiFile({ ...baseRaw, lineItems: [{ ...baseLineItem, rate: -50 }] });
+      const result = await service.parseFromFile(pdfBuffer, "application/pdf");
+
+      expect(result.lineItems[0].rate).toBeNull();
+      expect(result.warnings.some((w) => w.includes("negative"))).toBe(true);
+    });
+
+    it("falls back to defaultCurrency when raw currency is null", async () => {
+      stubGeminiFile({ ...baseRaw, currency: null });
+      const result = await service.parseFromFile(pdfBuffer, "image/png", "PHP");
+
+      expect(result.currency).toBe("PHP");
+    });
+
+    it("uses today's date when raw issueDate is null", async () => {
+      stubGeminiFile({ ...baseRaw, issueDate: null });
+      const result = await service.parseFromFile(pdfBuffer, "application/pdf");
+
+      expect(result.issueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it("passes empty lineItems through with warnings (non-quotation file)", async () => {
+      stubGeminiFile({
+        clientName: null,
+        clientEmail: null,
+        currency: null,
+        issueDate: null,
+        dueDate: null,
+        lineItems: [],
+      });
+      const result = await service.parseFromFile(pdfBuffer, "application/pdf");
+
+      expect(result.lineItems).toEqual([]);
+      expect(result.warnings.some((w) => w.includes("Client name"))).toBe(true);
+      expect(result.warnings.some((w) => w.includes("Due date"))).toBe(true);
+      expect(ParsedInvoiceDraftSchema.safeParse(result).success).toBe(true);
+    });
+  });
 });

@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mockDeep, type DeepMockProxy } from "vitest-mock-extended";
-import { NotFoundException } from "@nestjs/common";
+import {
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+  UnprocessableEntityException,
+  UnsupportedMediaTypeException,
+} from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import type {
   Client as ClientRow,
@@ -354,6 +360,144 @@ describe("InvoicesService", () => {
       prisma.invoice.findFirst.mockResolvedValue(null);
 
       await expect(service.getById(userId, "missing-id")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("parseQuotation", () => {
+    const MAGIC: Record<string, Buffer> = {
+      "application/pdf": Buffer.from("%PDF-1.4 fake content"),
+      "image/png": Buffer.concat([
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        Buffer.from("fake-png-body"),
+      ]),
+      "image/jpeg": Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.from("fake-jpeg-body")]),
+    };
+
+    function mockFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
+      const mimetype = overrides.mimetype ?? "application/pdf";
+      return {
+        fieldname: "file",
+        originalname: "quotation.pdf",
+        encoding: "7bit",
+        mimetype,
+        size: 12345,
+        buffer: MAGIC[mimetype] ?? Buffer.from("garbage"),
+        stream: undefined as never,
+        destination: "",
+        filename: "",
+        path: "",
+        ...overrides,
+      };
+    }
+
+    const stubDraft = {
+      clientName: "Quotation Co",
+      clientEmail: null,
+      currency: "USD" as const,
+      issueDate: "2026-05-22",
+      dueDate: "2026-06-21",
+      lineItems: [],
+      warnings: [],
+    };
+
+    it("throws UnprocessableEntityException when no file is provided", async () => {
+      await expect(service.parseQuotation(userId, undefined, {})).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(parser.parseFromFile).not.toHaveBeenCalled();
+    });
+
+    it("throws UnsupportedMediaTypeException for non-allowed MIME types", async () => {
+      await expect(
+        service.parseQuotation(userId, mockFile({ mimetype: "text/plain" }), {}),
+      ).rejects.toThrow(UnsupportedMediaTypeException);
+      expect(parser.parseFromFile).not.toHaveBeenCalled();
+    });
+
+    it("accepts application/pdf, image/png, image/jpeg", async () => {
+      parser.parseFromFile.mockResolvedValue(stubDraft);
+
+      for (const mimetype of ["application/pdf", "image/png", "image/jpeg"] as const) {
+        await expect(service.parseQuotation(userId, mockFile({ mimetype }), {})).resolves.toEqual(
+          stubDraft,
+        );
+      }
+      expect(parser.parseFromFile).toHaveBeenCalledTimes(3);
+    });
+
+    it("delegates to the parser with file buffer, MIME, and defaultCurrency", async () => {
+      parser.parseFromFile.mockResolvedValue(stubDraft);
+      const file = mockFile();
+
+      const result = await service.parseQuotation(userId, file, { defaultCurrency: "PHP" });
+
+      expect(parser.parseFromFile).toHaveBeenCalledWith(file.buffer, "application/pdf", "PHP");
+      expect(result).toEqual(stubDraft);
+    });
+
+    it("passes undefined defaultCurrency through when omitted", async () => {
+      parser.parseFromFile.mockResolvedValue(stubDraft);
+      const file = mockFile();
+
+      await service.parseQuotation(userId, file, {});
+
+      expect(parser.parseFromFile).toHaveBeenCalledWith(file.buffer, "application/pdf", undefined);
+    });
+
+    it("rejects a buffer whose magic bytes don't match the declared MIME (spoofed PDF)", async () => {
+      // Client claims application/pdf but the bytes are HTML — common spoof vector.
+      const spoof = mockFile({
+        mimetype: "application/pdf",
+        buffer: Buffer.from("<!DOCTYPE html><html>not a pdf</html>"),
+      });
+      await expect(service.parseQuotation(userId, spoof, {})).rejects.toThrow(
+        UnsupportedMediaTypeException,
+      );
+      expect(parser.parseFromFile).not.toHaveBeenCalled();
+    });
+
+    it("rejects a PNG-labelled buffer with PDF magic bytes", async () => {
+      const spoof = mockFile({
+        mimetype: "image/png",
+        buffer: Buffer.from("%PDF-1.4 still a pdf"),
+      });
+      await expect(service.parseQuotation(userId, spoof, {})).rejects.toThrow(
+        UnsupportedMediaTypeException,
+      );
+      expect(parser.parseFromFile).not.toHaveBeenCalled();
+    });
+
+    it("throws 429 after exceeding the per-user rate limit (10/min) and lets a different user through", async () => {
+      parser.parseFromFile.mockResolvedValue(stubDraft);
+
+      for (let i = 0; i < 10; i++) {
+        await expect(service.parseQuotation(userId, mockFile(), {})).resolves.toEqual(stubDraft);
+      }
+
+      const overflow = service.parseQuotation(userId, mockFile(), {});
+      await expect(overflow).rejects.toBeInstanceOf(HttpException);
+      await expect(overflow).rejects.toMatchObject({ status: HttpStatus.TOO_MANY_REQUESTS });
+
+      const otherUserId = "00000000-0000-0000-0000-0000000000ff";
+      await expect(service.parseQuotation(otherUserId, mockFile(), {})).resolves.toEqual(stubDraft);
+    });
+
+    it("resets the rate-limit window after PARSE_QUOTATION_WINDOW_MS elapses", async () => {
+      parser.parseFromFile.mockResolvedValue(stubDraft);
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-05-28T12:00:00.000Z"));
+      try {
+        for (let i = 0; i < 10; i++) {
+          await service.parseQuotation(userId, mockFile(), {});
+        }
+        await expect(service.parseQuotation(userId, mockFile(), {})).rejects.toMatchObject({
+          status: HttpStatus.TOO_MANY_REQUESTS,
+        });
+        vi.setSystemTime(new Date("2026-05-28T12:01:00.500Z"));
+        await expect(service.parseQuotation(userId, mockFile(), {})).resolves.toEqual(stubDraft);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

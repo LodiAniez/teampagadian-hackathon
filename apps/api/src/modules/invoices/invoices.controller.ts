@@ -1,6 +1,7 @@
-import { Controller, UseGuards } from "@nestjs/common";
+import { Controller, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { TsRestHandler, tsRestHandler } from "@ts-rest/nest";
-import { contract } from "@raket/contracts";
+import { contract, QUOTATION_MAX_BYTES } from "@raket/contracts";
 import { AuthGuard } from "../../common/auth/auth.guard";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
 import type { AuthUser } from "../../common/auth/auth-user.types";
@@ -39,6 +40,18 @@ export class InvoicesController {
   parseText(@CurrentUser() user: AuthUser) {
     return tsRestHandler(contract.invoices.parseText, async ({ body }) => {
       const draft = await this.invoices.parseText(user.id, body);
+      return { status: 200, body: draft };
+    });
+  }
+
+  @TsRestHandler(contract.invoices.parseQuotation)
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: QUOTATION_MAX_BYTES } }))
+  parseQuotation(
+    @CurrentUser() user: AuthUser,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
+    return tsRestHandler(contract.invoices.parseQuotation, async ({ body }) => {
+      const draft = await this.invoices.parseQuotation(user.id, file, body);
       return { status: 200, body: draft };
     });
   }

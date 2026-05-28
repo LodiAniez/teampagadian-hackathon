@@ -1,0 +1,13 @@
+# Sample quotations live here for the smoke:quotation script. The three
+# quotation_00*.pdf files committed alongside this .gitignore are
+# synthetic fixtures used for reproducible demo prep — they're allowlisted
+# below. Any OTHER PDF/image you drop into this directory stays local-only
+# (they may contain real client names, amounts, or addresses).
+*.pdf
+*.png
+*.jpg
+*.jpeg
+!.gitkeep
+!quotation_001.pdf
+!quotation_002.pdf
+!quotation_003.pdf

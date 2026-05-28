@@ -64,6 +64,18 @@ export const ParseInvoiceTextBodySchema = z.object({
 });
 export type ParseInvoiceTextBody = z.infer<typeof ParseInvoiceTextBodySchema>;
 
+// Multipart upload: file is validated server-side via FileInterceptor + MIME
+// check (it can't live in the Zod body because ts-rest doesn't model file parts).
+// Only the text fields belong here.
+export const ParseQuotationBodySchema = z.object({
+  defaultCurrency: SupportedCurrencySchema.optional(),
+});
+export type ParseQuotationBody = z.infer<typeof ParseQuotationBodySchema>;
+
+export const QUOTATION_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg"] as const;
+export type QuotationMimeType = (typeof QUOTATION_MIME_TYPES)[number];
+export const QUOTATION_MAX_BYTES = 5 * 1024 * 1024;
+
 export const ParsedInvoiceLineItemSchema = z.object({
   description: z.string().min(1).max(500),
   quantity: z.number().positive().nullable(),

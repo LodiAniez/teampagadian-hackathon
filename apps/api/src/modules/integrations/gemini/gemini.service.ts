@@ -1,6 +1,13 @@
 import { Injectable, InternalServerErrorException, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { ApiError, GoogleGenAI, Type, type GenerateContentResponse } from "@google/genai";
+import {
+  ApiError,
+  GoogleGenAI,
+  Type,
+  type ContentListUnion,
+  type GenerateContentResponse,
+} from "@google/genai";
+import type { QuotationMimeType } from "@raket/contracts";
 import { z } from "zod";
 import type { EnvConfig } from "../../../common/config/env.schema";
 import { todayIso } from "../../../common/utils/dates";
@@ -9,21 +16,36 @@ import { todayIso } from "../../../common/utils/dates";
 // and other 4xx won't recover from an immediate retry, so we fail fast on those.
 const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 
-function buildSystemInstruction(defaultCurrency?: string): string {
+type PromptMode = "text" | "file";
+
+function buildSystemInstruction(mode: PromptMode, defaultCurrency?: string): string {
   const currencyLine = defaultCurrency
     ? `If no currency is stated, assume ${defaultCurrency}.`
     : "If no currency is stated, leave currency null.";
 
-  return [
-    "You extract structured invoice data from a freelancer's plain-text description of work.",
+  const opening =
+    mode === "file"
+      ? "You extract structured invoice data from a quotation document (PDF or image). The document may contain a header, a line-items table, totals, and notes."
+      : "You extract structured invoice data from a freelancer's plain-text description of work.";
+
+  const lines = [
+    opening,
     `Today's date is ${todayIso()}.`,
     'Resolve relative dates against today and output them as YYYY-MM-DD — e.g. "due in 30 days", "net 15", "by next Friday". If a date truly cannot be determined, use null.',
-    "Set any field to null when the text does not provide it — never guess amounts, dates, or client names.",
+    "Set any field to null when the source does not provide it — never guess amounts, dates, or client names.",
     currencyLine,
     "Treat each distinct piece of work as its own line item with a concise description.",
     'Parse amounts and rates from natural phrasing: "$1,500" → 1500; "$90/hour for 10 hours" → rate 90, quantity 10, unit "hour".',
     "Compute lineItems[].amount only when both quantity and rate are present; otherwise null. A flat fee sets amount with quantity and rate null.",
-  ].join(" ");
+  ];
+
+  if (mode === "file") {
+    lines.push(
+      "Skip subtotal, tax, and total rows — those are computed downstream from line items. Extract only the actual work line items.",
+    );
+  }
+
+  return lines.join(" ");
 }
 
 // Gemini structured-output schema for `responseSchema`. Optional fields are
@@ -91,20 +113,33 @@ export class GeminiService {
   }
 
   async parseInvoiceText(text: string, defaultCurrency?: string): Promise<RawParsedInvoice> {
-    const response = await this.generate(text, buildSystemInstruction(defaultCurrency));
+    const response = await this.generate(text, buildSystemInstruction("text", defaultCurrency));
+    return this.parseResponse(response.text);
+  }
+
+  async parseInvoiceFromFile(
+    file: Buffer,
+    mimeType: QuotationMimeType,
+    defaultCurrency?: string,
+  ): Promise<RawParsedInvoice> {
+    const parts = [
+      { inlineData: { mimeType, data: file.toString("base64") } },
+      { text: "Extract this quotation into a structured invoice draft." },
+    ];
+    const response = await this.generate(parts, buildSystemInstruction("file", defaultCurrency));
     return this.parseResponse(response.text);
   }
 
   // Failures are logged server-side and surfaced as a generic 500 so the raw
   // upstream error is never leaked to the client.
   private async generate(
-    text: string,
+    contents: ContentListUnion,
     systemInstruction: string,
   ): Promise<GenerateContentResponse> {
     const call = () =>
       this.client.models.generateContent({
         model: this.model,
-        contents: text,
+        contents,
         config: {
           systemInstruction,
           responseMimeType: "application/json",

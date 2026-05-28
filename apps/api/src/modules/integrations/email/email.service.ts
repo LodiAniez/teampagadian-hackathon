@@ -58,8 +58,8 @@ export class EmailService {
           {
             content: qr.content,
             filename: "invoice-qr.png",
-            content_id: QR_CONTENT_ID,
-            content_type: qr.contentType,
+            contentId: QR_CONTENT_ID,
+            contentType: qr.contentType,
           },
         ]
       : undefined;

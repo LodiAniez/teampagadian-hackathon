@@ -129,8 +129,8 @@ describe("EmailService", () => {
       expect(payload.attachments).toEqual([
         expect.objectContaining({
           content: "iVBORw0KGgo=",
-          content_id: "qr-invoice",
-          content_type: "image/png",
+          contentId: "qr-invoice",
+          contentType: "image/png",
           filename: expect.stringMatching(/\.png$/),
         }),
       ]);

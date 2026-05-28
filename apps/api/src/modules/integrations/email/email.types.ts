@@ -24,15 +24,17 @@ export interface ResendSendPayload {
   attachments?: ResendAttachment[];
 }
 
-// Mirrors Resend's attachment shape. `content` is a base64-encoded string;
-// `content_id` enables CID inline references (`<img src="cid:foo">`) which is
-// the only reliable way to embed images in Gmail — base64 `data:` URIs in
-// `<img src>` are stripped by Gmail's image proxy.
+// Mirrors Resend's Attachment input shape (camelCase — the SDK maps these to
+// snake_case on the wire). `content` is a base64-encoded string; `contentId`
+// enables CID inline references (`<img src="cid:foo">`) which is the only
+// reliable way to embed images in Gmail — base64 `data:` URIs in `<img src>`
+// are stripped by Gmail's image proxy. Field names MUST be camelCase; the
+// snake_case variants the wire API uses are silently dropped by the SDK.
 export interface ResendAttachment {
   content: string;
   filename: string;
-  content_id?: string;
-  content_type?: string;
+  contentId?: string;
+  contentType?: string;
 }
 
 /**

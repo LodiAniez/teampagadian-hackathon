@@ -100,6 +100,7 @@ describe("InvoicesController.parseQuotation", () => {
       .attach("file", bigBuffer, { filename: "big.pdf", contentType: "application/pdf" });
 
     expect(res.status).toBe(413);
+    expect(res.body.code).toBe("FILE_TOO_LARGE");
     expect(parseQuotation).not.toHaveBeenCalled();
   });
 

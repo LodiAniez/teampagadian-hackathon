@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 import {
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -214,8 +216,20 @@ export class InvoicesService {
     return this.invoiceParser.parse(body.text, body.defaultCurrency);
   }
 
+  // Fixed-window per-user rate limit for parse-quotation. In-memory and per-instance
+  // by design (single API replica during hackathon); swap for Redis if we scale out.
+  // Keyed by userId so an attacker can't drain the shared Gemini quota by hammering
+  // one endpoint. Window resets on the next call after expiry — good enough for
+  // free-tier protection, not a fairness guarantee.
+  private static readonly PARSE_QUOTATION_LIMIT = 10;
+  private static readonly PARSE_QUOTATION_WINDOW_MS = 60_000;
+  private readonly parseQuotationCounters = new Map<
+    string,
+    { count: number; windowStart: number }
+  >();
+
   async parseQuotation(
-    _userId: string,
+    userId: string,
     file: Express.Multer.File | undefined,
     body: ParseQuotationBody,
   ): Promise<ParsedInvoiceDraft> {
@@ -227,7 +241,31 @@ export class InvoicesService {
         `Unsupported file type: ${file.mimetype}. Allowed: ${QUOTATION_MIME_TYPES.join(", ")}`,
       );
     }
+    // Header-claimed MIME is client-controlled; verify the file's actual magic
+    // bytes so a shell script labeled application/pdf doesn't reach Gemini.
+    if (!matchesQuotationMagic(file.buffer, file.mimetype)) {
+      throw new UnsupportedMediaTypeException(
+        `File contents do not match the declared type ${file.mimetype}`,
+      );
+    }
+    this.assertParseQuotationWithinRateLimit(userId);
     return this.invoiceParser.parseFromFile(file.buffer, file.mimetype, body.defaultCurrency);
+  }
+
+  private assertParseQuotationWithinRateLimit(userId: string): void {
+    const now = Date.now();
+    const entry = this.parseQuotationCounters.get(userId);
+    if (!entry || now - entry.windowStart >= InvoicesService.PARSE_QUOTATION_WINDOW_MS) {
+      this.parseQuotationCounters.set(userId, { count: 1, windowStart: now });
+      return;
+    }
+    if (entry.count >= InvoicesService.PARSE_QUOTATION_LIMIT) {
+      throw new HttpException(
+        `Rate limit exceeded: max ${InvoicesService.PARSE_QUOTATION_LIMIT} parse-quotation requests per minute`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    entry.count += 1;
   }
 
   async send(
@@ -390,6 +428,16 @@ export class InvoicesService {
 
 function isQuotationMimeType(mimetype: string): mimetype is QuotationMimeType {
   return (QUOTATION_MIME_TYPES as readonly string[]).includes(mimetype);
+}
+
+const QUOTATION_MAGIC_BYTES: Record<QuotationMimeType, readonly Buffer[]> = {
+  "application/pdf": [Buffer.from("%PDF")],
+  "image/png": [Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+  "image/jpeg": [Buffer.from([0xff, 0xd8, 0xff])],
+};
+
+function matchesQuotationMagic(buf: Buffer, mime: QuotationMimeType): boolean {
+  return QUOTATION_MAGIC_BYTES[mime].some((sig) => buf.subarray(0, sig.length).equals(sig));
 }
 
 function isInvoiceNumberConflict(err: unknown): boolean {

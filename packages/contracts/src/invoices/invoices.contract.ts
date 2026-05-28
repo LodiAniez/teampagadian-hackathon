@@ -79,6 +79,7 @@ export const invoicesContract = c.router(
         413: ErrorResponseSchema,
         415: ErrorResponseSchema,
         422: ErrorResponseSchema,
+        429: ErrorResponseSchema,
         500: ErrorResponseSchema,
       },
       summary: "Parse a quotation PDF/image into an invoice draft via Gemini vision",

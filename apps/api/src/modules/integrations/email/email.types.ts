@@ -21,6 +21,20 @@ export interface ResendSendPayload {
   subject: string;
   html: string;
   text?: string;
+  attachments?: ResendAttachment[];
+}
+
+// Mirrors Resend's Attachment input shape (camelCase — the SDK maps these to
+// snake_case on the wire). `content` is a base64-encoded string; `contentId`
+// enables CID inline references (`<img src="cid:foo">`) which is the only
+// reliable way to embed images in Gmail — base64 `data:` URIs in `<img src>`
+// are stripped by Gmail's image proxy. Field names MUST be camelCase; the
+// snake_case variants the wire API uses are silently dropped by the SDK.
+export interface ResendAttachment {
+  content: string;
+  filename: string;
+  contentId?: string;
+  contentType?: string;
 }
 
 /**
@@ -57,7 +71,9 @@ export interface FreelancerEmailData {
   // Structured signature fields per TEA-36 AC ("name, business name, contact").
   name: string;
   businessName?: string;
-  contactEmail: string;
+  // Optional: User model currently has no email column (phone is the unique
+  // identifier). Template + plain-text render skip the line when omitted.
+  contactEmail?: string;
 }
 
 export interface SendInvoiceEmailParams {

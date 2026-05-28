@@ -4,14 +4,18 @@ export interface RenderInvoiceEmailParams {
   invoice: InvoiceEmailData;
   freelancer: FreelancerEmailData;
   paymentUrl: string;
-  qrCodeDataUrl: string;
 }
 
 // Email clients strip <style> blocks and reject most modern CSS — every style
 // is inlined on the element. Layout uses presentational tables for the same
 // reason (flexbox + grid still fail in Outlook 2016/365 desktop).
+// Content-ID for the QR PNG attached inline by EmailService. Referenced in the
+// HTML as `<img src="cid:${QR_CONTENT_ID}">`. Gmail strips base64 `data:` URIs
+// in <img src>, so CID inline attachments are the only portable option.
+export const QR_CONTENT_ID = "qr-invoice";
+
 export function renderInvoiceEmail(params: RenderInvoiceEmailParams): string {
-  const { invoice, freelancer, paymentUrl, qrCodeDataUrl } = params;
+  const { invoice, freelancer, paymentUrl } = params;
   const lineItemRows = invoice.lineItems.map(renderLineItemRow).join("");
 
   return `<!DOCTYPE html>
@@ -37,7 +41,7 @@ export function renderInvoiceEmail(params: RenderInvoiceEmailParams): string {
 
 <tr><td align="center" style="padding:24px 32px 8px;">
 <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">Or scan to pay from your phone</p>
-<img src="${escapeAttr(qrCodeDataUrl)}" alt="QR code to pay invoice ${escapeAttr(invoice.number)}" width="160" height="160" style="display:block;border:0;outline:none;text-decoration:none;">
+<img src="cid:${QR_CONTENT_ID}" alt="QR code to pay invoice ${escapeAttr(invoice.number)}" width="160" height="160" style="display:block;border:0;outline:none;text-decoration:none;">
 </td></tr>
 
 <tr><td style="padding:16px 32px 24px;">
@@ -65,7 +69,7 @@ ${lineItemRows}
 </td></tr>
 
 <tr><td style="padding:24px 32px 32px;">
-<p style="margin:0;font-size:14px;line-height:1.6;color:#374151;">Thanks,<br><strong style="color:#111827;">${escapeHtml(freelancer.name)}</strong>${freelancer.businessName ? `<br><span style="color:#6b7280;">${escapeHtml(freelancer.businessName)}</span>` : ""}<br><a href="mailto:${escapeAttr(freelancer.contactEmail)}" style="color:#0066ff;text-decoration:none;">${escapeHtml(freelancer.contactEmail)}</a></p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#374151;">Thanks,<br><strong style="color:#111827;">${escapeHtml(freelancer.name)}</strong>${freelancer.businessName ? `<br><span style="color:#6b7280;">${escapeHtml(freelancer.businessName)}</span>` : ""}${freelancer.contactEmail ? `<br><a href="mailto:${escapeAttr(freelancer.contactEmail)}" style="color:#0066ff;text-decoration:none;">${escapeHtml(freelancer.contactEmail)}</a>` : ""}</p>
 </td></tr>
 </table>
 
@@ -86,7 +90,7 @@ export function renderInvoiceEmailText(params: RenderInvoiceEmailParams): string
     "Thanks,",
     freelancer.name,
     ...(freelancer.businessName ? [freelancer.businessName] : []),
-    freelancer.contactEmail,
+    ...(freelancer.contactEmail ? [freelancer.contactEmail] : []),
   ];
 
   return [

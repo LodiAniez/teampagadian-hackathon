@@ -1,4 +1,13 @@
-import { Injectable, NotFoundException, NotImplementedException } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+  NotImplementedException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Prisma } from "@prisma/client";
 import type { Client as ClientRow } from "@prisma/client";
 import type {
@@ -11,9 +20,13 @@ import type {
   SendInvoiceBody,
   SendInvoiceResponse,
 } from "@raket/contracts";
+import type { EnvConfig } from "@/common/config/env.schema";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { EmailService } from "../integrations/email/email.service";
+import { QrService } from "../integrations/qr/qr.service";
+import { StripeService } from "../integrations/stripe/stripe.service";
 import { InvoiceParserService } from "./invoice-parser.service";
-import { toInvoiceDto } from "./invoices.mapper";
+import { toInvoiceDto, type InvoiceRowWithClientAndLineItems } from "./invoices.mapper";
 
 type ListQuery = {
   cursor?: string;
@@ -24,9 +37,15 @@ type ListQuery = {
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly invoiceParser: InvoiceParserService,
+    private readonly stripeService: StripeService,
+    private readonly qrService: QrService,
+    private readonly emailService: EmailService,
+    private readonly config: ConfigService<EnvConfig, true>,
   ) {}
 
   async list(userId: string, query: ListQuery): Promise<PaginatedResponse<Invoice>> {
@@ -191,17 +210,160 @@ export class InvoicesService {
   }
 
   async send(
-    _userId: string,
-    _invoiceId: string,
-    _body: SendInvoiceBody,
+    userId: string,
+    invoiceId: string,
+    body: SendInvoiceBody,
   ): Promise<SendInvoiceResponse> {
-    throw new NotImplementedException(
-      "send: implement Stripe Checkout + QR + Resend email — see M4 in Linear",
-    );
+    const row = await this.findRawInvoice(userId, invoiceId);
+
+    if (row.status === "sent") {
+      if (!row.stripeCheckoutUrl || !row.qrCodeDataUrl) {
+        throw new InternalServerErrorException("Sent invoice is missing Stripe/QR data");
+      }
+      return {
+        invoice: toInvoiceDto(row),
+        checkoutUrl: row.stripeCheckoutUrl,
+        qrCodeDataUrl: row.qrCodeDataUrl,
+      };
+    }
+
+    if (row.status !== "draft") {
+      throw new ConflictException(`Invoice cannot be sent: status is ${row.status}`);
+    }
+
+    // Optimistic lock against concurrent send() calls (network retry, double-tap,
+    // StrictMode double-invoke). The first writer flips sentAt from null → now and
+    // wins the right to create the Stripe session; the loser sees count=0.
+    //
+    // Stale-lock recovery: if a previous send crashed between the lock acquire
+    // and the final status-flip, sentAt is set but status is still "draft" — the
+    // row would be permanently un-resendable otherwise. Treat a sentAt older
+    // than STALE_LOCK_MS on a draft row as abandoned and reclaim it. The
+    // try/catch below also releases the lock on failure so this path is rare.
+    const STALE_LOCK_MS = 60_000;
+    const sendStartedAt = new Date();
+    const staleThreshold = new Date(sendStartedAt.getTime() - STALE_LOCK_MS);
+    const lock = await this.prisma.invoice.updateMany({
+      where: {
+        id: invoiceId,
+        userId,
+        status: "draft",
+        OR: [{ sentAt: null }, { sentAt: { lt: staleThreshold } }],
+      },
+      data: { sentAt: sendStartedAt },
+    });
+    if (lock.count === 0) {
+      const current = await this.findRawInvoice(userId, invoiceId);
+      if (current.status === "sent" && current.stripeCheckoutUrl && current.qrCodeDataUrl) {
+        return {
+          invoice: toInvoiceDto(current),
+          checkoutUrl: current.stripeCheckoutUrl,
+          qrCodeDataUrl: current.qrCodeDataUrl,
+        };
+      }
+      throw new ConflictException("Invoice send is already in progress");
+    }
+
+    let session: { id: string; url: string };
+    let qrCodeDataUrl: string;
+    let updated: InvoiceRowWithClientAndLineItems;
+    let freelancer: Awaited<ReturnType<typeof this.prisma.user.findUnique>>;
+    try {
+      freelancer = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!freelancer) throw new NotFoundException("User not found");
+
+      const publicShareToken = randomBytes(16).toString("base64url");
+
+      const appUrl = this.config.get("APP_URL", { infer: true });
+      const successUrl = `${appUrl}/invoices/${invoiceId}/paid`;
+
+      session = await this.stripeService.createInvoiceCheckoutSession(
+        { id: row.id, number: row.number, amount: Number(row.amount), currency: row.currency },
+        body.clientEmail,
+        successUrl,
+      );
+
+      qrCodeDataUrl = await this.qrService.toDataUrl(session.url);
+
+      updated = await this.prisma.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          status: "sent",
+          publicShareToken,
+          stripeCheckoutSessionId: session.id,
+          stripeCheckoutUrl: session.url,
+          qrCodeDataUrl,
+        },
+        include: { client: true, lineItems: { orderBy: { position: "asc" } } },
+      });
+    } catch (err) {
+      // Release the lock so the user can retry without waiting for STALE_LOCK_MS.
+      // Guard on sentAt: sendStartedAt so we don't clobber a lock acquired by
+      // another in-flight call that legitimately won the race.
+      await this.prisma.invoice
+        .updateMany({
+          where: { id: invoiceId, userId, status: "draft", sentAt: sendStartedAt },
+          data: { sentAt: null },
+        })
+        .catch((releaseErr) => {
+          this.logger.error(
+            `Failed to release send lock for invoice ${invoiceId}: ${releaseErr instanceof Error ? releaseErr.message : releaseErr}`,
+          );
+        });
+      throw err;
+    }
+
+    // Email failure must not roll back an already-persisted Stripe session.
+    const displayName = freelancer.businessName ?? freelancer.name ?? "Your Freelancer";
+    try {
+      await this.emailService.sendInvoiceEmail({
+        invoice: {
+          number: row.number,
+          amount: formatAmount(Number(row.amount)),
+          currency: row.currency,
+          dueDate: formatDate(row.dueDate),
+          lineItems: row.lineItems.map((li) => ({
+            description: li.description,
+            amount: formatAmount(Number(li.amount)),
+          })),
+          clientName: row.client.name,
+        },
+        freelancer: {
+          displayName,
+          name: freelancer.name ?? "",
+          businessName: freelancer.businessName ?? undefined,
+        },
+        paymentUrl: session.url,
+        qrCodeDataUrl,
+        recipientEmail: body.clientEmail,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Email send failed for invoice ${row.number}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
+    return {
+      invoice: toInvoiceDto(updated),
+      checkoutUrl: session.url,
+      qrCodeDataUrl,
+    };
   }
 
   async void(_userId: string, _invoiceId: string): Promise<Invoice> {
     throw new NotImplementedException("void: implement state transition + idempotency");
+  }
+
+  private async findRawInvoice(
+    userId: string,
+    invoiceId: string,
+  ): Promise<InvoiceRowWithClientAndLineItems> {
+    const row = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, userId },
+      include: { client: true, lineItems: { orderBy: { position: "asc" } } },
+    });
+    if (!row) throw new NotFoundException(`Invoice ${invoiceId} not found`);
+    return row;
   }
 }
 
@@ -215,4 +377,15 @@ function isInvoiceNumberConflict(err: unknown): boolean {
   if (Array.isArray(target)) return target.includes("number");
   if (typeof target === "string") return target.includes("number");
   return false;
+}
+
+function formatAmount(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }

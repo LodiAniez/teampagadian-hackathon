@@ -11,6 +11,7 @@ import type { CardDetails } from "@raket/contracts";
 import type { EnvConfig } from "@/common/config/env.schema";
 import {
   STRIPE_CLIENT,
+  type CheckoutSessionResult,
   type SetupIntentResult,
   type StripeClient,
   type WebhookEvent,
@@ -69,6 +70,53 @@ export class StripeService {
       expYear: pm.card.exp_year,
       stripePaymentMethodId: pm.id,
     };
+  }
+
+  /**
+   * Creates a Stripe Checkout Session for invoice payment.
+   *
+   * Uses a single line item for the invoice total so fractional quantities
+   * (e.g. 20.5 hours) don't hit Stripe's integer-quantity constraint.
+   * The payment intent ID is not captured here — it arrives via the
+   * checkout.session.completed webhook (TEA-40) once the client pays.
+   */
+  async createInvoiceCheckoutSession(
+    invoice: { id: string; number: string; amount: number; currency: string },
+    clientEmail: string,
+    successUrl: string,
+  ): Promise<CheckoutSessionResult> {
+    // Keyed on invoiceId so a retry after a transient failure (DB blip between
+    // session creation and the final invoice.update) returns the same Stripe
+    // session instead of orphaning the first one — Stripe stores the key for
+    // ~24h, which covers any realistic retry window.
+    const session = await this.stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        customer_email: clientEmail,
+        line_items: [
+          {
+            price_data: {
+              currency: invoice.currency.toLowerCase(),
+              product_data: { name: `Invoice ${invoice.number}` },
+              unit_amount: Math.round(invoice.amount * 100),
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: successUrl,
+        metadata: { invoiceId: invoice.id },
+      },
+      { idempotencyKey: `send-invoice-${invoice.id}` },
+    );
+
+    if (!session.url) {
+      throw new InternalServerErrorException(
+        `Stripe Checkout session ${session.id} returned no URL`,
+      );
+    }
+
+    this.logger.log(`Created Checkout session ${session.id} for invoice ${invoice.id}`);
+    return { id: session.id, url: session.url };
   }
 
   /**

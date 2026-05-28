@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mockDeep, type DeepMockProxy } from "vitest-mock-extended";
 import { NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
@@ -87,7 +87,14 @@ describe("InvoicesService", () => {
     prisma.$transaction.mockImplementation((cb: (tx: typeof prisma) => unknown) =>
       Promise.resolve(cb(prisma)),
     );
-    service = new InvoicesService(prisma, parser);
+    service = new InvoicesService(
+      prisma,
+      parser,
+      { createInvoiceCheckoutSession: vi.fn() } as never,
+      { toDataUrl: vi.fn() } as never,
+      { sendInvoiceEmail: vi.fn() } as never,
+      { get: vi.fn(() => "http://localhost:3000") } as never,
+    );
   });
 
   describe("create — clientId path", () => {

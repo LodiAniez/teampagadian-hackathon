@@ -17,7 +17,7 @@ function baseEnv(): Record<string, string> {
     STRIPE_SECRET_KEY: "sk_test_123",
     GEMINI_API_KEY: "test-gemini-key",
     RESEND_API_KEY: "re_test",
-    NEXT_PUBLIC_APP_URL: "https://app.example.com",
+    APP_URL: "https://app.example.com",
     MORPH_HOT_WALLET_PRIVATE_KEY: VALID_PRIVATE_KEY,
     MORPH_USDC_CONTRACT_ADDRESS: VALID_HOT_WALLET_ADDRESS,
     MORPH_COINSPH_DEPOSIT_ADDRESS: VALID_COINSPH_DEPOSIT_ADDRESS,

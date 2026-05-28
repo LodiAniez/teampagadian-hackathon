@@ -13,6 +13,7 @@ describe("StripeService", () => {
     mockStripe = {
       setupIntents: { create: vi.fn() },
       paymentMethods: { retrieve: vi.fn() },
+      checkout: { sessions: { create: vi.fn() } },
       webhooks: { constructEvent: vi.fn() },
     };
     mockConfigGet = vi.fn();
@@ -114,6 +115,35 @@ describe("StripeService", () => {
       });
 
       await expect(service.retrieveCardDetails("pm_test")).rejects.toThrow(/not a card/);
+    });
+  });
+
+  describe("createInvoiceCheckoutSession", () => {
+    const invoice = { id: "inv_123", number: "INV-2026-0001", amount: 100.5, currency: "PHP" };
+
+    it("passes an invoice-scoped idempotency key so retries return the same session", async () => {
+      vi.mocked(mockStripe.checkout.sessions.create).mockResolvedValueOnce({
+        id: "cs_test",
+        url: "https://checkout.stripe.com/cs_test",
+      });
+
+      await service.createInvoiceCheckoutSession(invoice, "client@example.com", "https://app/ok");
+
+      expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: { invoiceId: "inv_123" } }),
+        { idempotencyKey: "send-invoice-inv_123" },
+      );
+    });
+
+    it("rejects when Stripe returns a session without a URL", async () => {
+      vi.mocked(mockStripe.checkout.sessions.create).mockResolvedValueOnce({
+        id: "cs_test",
+        url: null,
+      });
+
+      await expect(
+        service.createInvoiceCheckoutSession(invoice, "client@example.com", "https://app/ok"),
+      ).rejects.toThrow(/returned no URL/);
     });
   });
 

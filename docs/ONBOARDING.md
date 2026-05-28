@@ -96,7 +96,8 @@ RESEND_FROM_EMAIL="invoices@yourdomain.com"   # optional in dev
 ```env
 PORT=3001
 NEXT_PUBLIC_API_URL="http://localhost:3001/api/v1"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"   # Next.js client bundle
+APP_URL="http://localhost:3000"               # NestJS API (Stripe success_url, etc.) — keep in sync with NEXT_PUBLIC_APP_URL
 CORS_ORIGINS="http://localhost:3000"   # comma-separated for multi-origin (staging, previews)
 EXCHANGE_RATE_API_URL="https://api.exchangerate.host"
 ```

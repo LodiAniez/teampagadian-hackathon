@@ -1,5 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("./auth", () => ({
+  authHeader: vi.fn(),
+}));
+
+vi.mock("@ts-rest/core", () => ({
+  tsRestFetchApi: vi.fn(),
+}));
+
+vi.mock("@raket/contracts", () => ({ contract: {} }));
+vi.mock("@ts-rest/react-query", () => ({ initQueryClient: vi.fn(() => ({})) }));
+
 const VALID_ENV = {
   EXPO_PUBLIC_API_URL: "https://api.example.test",
   EXPO_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
@@ -7,16 +18,12 @@ const VALID_ENV = {
   EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_12345",
 };
 
-describe("lib/api-client", () => {
+describe("lib/api-client — authedFetcher", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     vi.resetModules();
-    process.env = { ...originalEnv };
-    delete process.env.EXPO_PUBLIC_API_URL;
-    delete process.env.EXPO_PUBLIC_SUPABASE_URL;
-    delete process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    delete process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    process.env = { ...originalEnv, ...VALID_ENV };
     delete process.env.EXPO_PUBLIC_DEV_BEARER;
   });
 
@@ -24,15 +31,30 @@ describe("lib/api-client", () => {
     process.env = originalEnv;
   });
 
-  it("buildAuthorizationHeader returns a Bearer token when EXPO_PUBLIC_DEV_BEARER is set", async () => {
-    Object.assign(process.env, VALID_ENV, { EXPO_PUBLIC_DEV_BEARER: "abc.def.ghi" });
-    const { buildAuthorizationHeader } = await import("./api-client");
-    expect(buildAuthorizationHeader()).toBe("Bearer abc.def.ghi");
+  it("injects the Bearer token from the active session before fetching", async () => {
+    const { authHeader } = await import("./auth");
+    const { tsRestFetchApi } = await import("@ts-rest/core");
+    vi.mocked(authHeader).mockResolvedValue({ authorization: "Bearer live-token" });
+    vi.mocked(tsRestFetchApi).mockResolvedValue({ status: 200, body: {}, headers: new Headers() });
+
+    const { authedFetcher } = await import("./api-client");
+    const fakeArgs = { headers: {} as Record<string, string> };
+    await authedFetcher(fakeArgs as never);
+
+    expect(fakeArgs.headers.authorization).toBe("Bearer live-token");
+    expect(tsRestFetchApi).toHaveBeenCalledWith(fakeArgs);
   });
 
-  it("buildAuthorizationHeader returns an empty string when EXPO_PUBLIC_DEV_BEARER is unset", async () => {
-    Object.assign(process.env, VALID_ENV);
-    const { buildAuthorizationHeader } = await import("./api-client");
-    expect(buildAuthorizationHeader()).toBe("");
+  it("sets an empty authorization header when no session exists", async () => {
+    const { authHeader } = await import("./auth");
+    const { tsRestFetchApi } = await import("@ts-rest/core");
+    vi.mocked(authHeader).mockResolvedValue({ authorization: "" });
+    vi.mocked(tsRestFetchApi).mockResolvedValue({ status: 200, body: {}, headers: new Headers() });
+
+    const { authedFetcher } = await import("./api-client");
+    const fakeArgs = { headers: {} as Record<string, string> };
+    await authedFetcher(fakeArgs as never);
+
+    expect(fakeArgs.headers.authorization).toBe("");
   });
 });

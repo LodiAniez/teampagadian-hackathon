@@ -6,19 +6,24 @@ import {
   Logger,
   NotFoundException,
   NotImplementedException,
+  UnprocessableEntityException,
+  UnsupportedMediaTypeException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Prisma } from "@prisma/client";
 import type { Client as ClientRow } from "@prisma/client";
-import type {
-  CreateInvoiceBody,
-  Invoice,
-  InvoiceStatus,
-  PaginatedResponse,
-  ParseInvoiceTextBody,
-  ParsedInvoiceDraft,
-  SendInvoiceBody,
-  SendInvoiceResponse,
+import {
+  type CreateInvoiceBody,
+  type Invoice,
+  type InvoiceStatus,
+  type PaginatedResponse,
+  type ParseInvoiceTextBody,
+  type ParseQuotationBody,
+  type ParsedInvoiceDraft,
+  type QuotationMimeType,
+  QUOTATION_MIME_TYPES,
+  type SendInvoiceBody,
+  type SendInvoiceResponse,
 } from "@raket/contracts";
 import type { EnvConfig } from "@/common/config/env.schema";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -209,6 +214,22 @@ export class InvoicesService {
     return this.invoiceParser.parse(body.text, body.defaultCurrency);
   }
 
+  async parseQuotation(
+    _userId: string,
+    file: Express.Multer.File | undefined,
+    body: ParseQuotationBody,
+  ): Promise<ParsedInvoiceDraft> {
+    if (!file) {
+      throw new UnprocessableEntityException("file is required");
+    }
+    if (!isQuotationMimeType(file.mimetype)) {
+      throw new UnsupportedMediaTypeException(
+        `Unsupported file type: ${file.mimetype}. Allowed: ${QUOTATION_MIME_TYPES.join(", ")}`,
+      );
+    }
+    return this.invoiceParser.parseFromFile(file.buffer, file.mimetype, body.defaultCurrency);
+  }
+
   async send(
     userId: string,
     invoiceId: string,
@@ -365,6 +386,10 @@ export class InvoicesService {
     if (!row) throw new NotFoundException(`Invoice ${invoiceId} not found`);
     return row;
   }
+}
+
+function isQuotationMimeType(mimetype: string): mimetype is QuotationMimeType {
+  return (QUOTATION_MIME_TYPES as readonly string[]).includes(mimetype);
 }
 
 function isInvoiceNumberConflict(err: unknown): boolean {

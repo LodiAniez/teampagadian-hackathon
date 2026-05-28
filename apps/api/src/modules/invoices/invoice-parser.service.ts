@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import {
   type ParsedInvoiceDraft,
   type ParsedInvoiceLineItem,
+  type QuotationMimeType,
   type SupportedCurrency,
   SupportedCurrencySchema,
 } from "@raket/contracts";
@@ -18,6 +19,22 @@ export class InvoiceParserService {
 
   async parse(text: string, defaultCurrency?: SupportedCurrency): Promise<ParsedInvoiceDraft> {
     const raw = await this.gemini.parseInvoiceText(text, defaultCurrency);
+    return this.sanitize(raw, defaultCurrency);
+  }
+
+  async parseFromFile(
+    file: Buffer,
+    mimeType: QuotationMimeType,
+    defaultCurrency?: SupportedCurrency,
+  ): Promise<ParsedInvoiceDraft> {
+    const raw = await this.gemini.parseInvoiceFromFile(file, mimeType, defaultCurrency);
+    return this.sanitize(raw, defaultCurrency);
+  }
+
+  private sanitize(
+    raw: RawParsedInvoice,
+    defaultCurrency: SupportedCurrency | undefined,
+  ): ParsedInvoiceDraft {
     const warnings: string[] = [];
 
     collectTopLevelWarnings(raw, warnings);

@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mockDeep, type DeepMockProxy } from "vitest-mock-extended";
-import { NotFoundException } from "@nestjs/common";
+import {
+  NotFoundException,
+  UnprocessableEntityException,
+  UnsupportedMediaTypeException,
+} from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import type {
   Client as ClientRow,
@@ -354,6 +358,78 @@ describe("InvoicesService", () => {
       prisma.invoice.findFirst.mockResolvedValue(null);
 
       await expect(service.getById(userId, "missing-id")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("parseQuotation", () => {
+    function mockFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
+      return {
+        fieldname: "file",
+        originalname: "quotation.pdf",
+        encoding: "7bit",
+        mimetype: "application/pdf",
+        size: 12345,
+        buffer: Buffer.from("%PDF-1.4 fake content"),
+        stream: undefined as never,
+        destination: "",
+        filename: "",
+        path: "",
+        ...overrides,
+      };
+    }
+
+    const stubDraft = {
+      clientName: "Quotation Co",
+      clientEmail: null,
+      currency: "USD" as const,
+      issueDate: "2026-05-22",
+      dueDate: "2026-06-21",
+      lineItems: [],
+      warnings: [],
+    };
+
+    it("throws UnprocessableEntityException when no file is provided", async () => {
+      await expect(service.parseQuotation(userId, undefined, {})).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(parser.parseFromFile).not.toHaveBeenCalled();
+    });
+
+    it("throws UnsupportedMediaTypeException for non-allowed MIME types", async () => {
+      await expect(
+        service.parseQuotation(userId, mockFile({ mimetype: "text/plain" }), {}),
+      ).rejects.toThrow(UnsupportedMediaTypeException);
+      expect(parser.parseFromFile).not.toHaveBeenCalled();
+    });
+
+    it("accepts application/pdf, image/png, image/jpeg", async () => {
+      parser.parseFromFile.mockResolvedValue(stubDraft);
+
+      for (const mimetype of ["application/pdf", "image/png", "image/jpeg"] as const) {
+        await expect(service.parseQuotation(userId, mockFile({ mimetype }), {})).resolves.toEqual(
+          stubDraft,
+        );
+      }
+      expect(parser.parseFromFile).toHaveBeenCalledTimes(3);
+    });
+
+    it("delegates to the parser with file buffer, MIME, and defaultCurrency", async () => {
+      parser.parseFromFile.mockResolvedValue(stubDraft);
+      const file = mockFile();
+
+      const result = await service.parseQuotation(userId, file, { defaultCurrency: "PHP" });
+
+      expect(parser.parseFromFile).toHaveBeenCalledWith(file.buffer, "application/pdf", "PHP");
+      expect(result).toEqual(stubDraft);
+    });
+
+    it("passes undefined defaultCurrency through when omitted", async () => {
+      parser.parseFromFile.mockResolvedValue(stubDraft);
+      const file = mockFile();
+
+      await service.parseQuotation(userId, file, {});
+
+      expect(parser.parseFromFile).toHaveBeenCalledWith(file.buffer, "application/pdf", undefined);
     });
   });
 

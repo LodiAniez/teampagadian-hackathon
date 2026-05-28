@@ -199,4 +199,147 @@ describe("GeminiService", () => {
       await expect(service.parseInvoiceText("anything")).rejects.not.toThrow(/quota/);
     });
   });
+
+  describe("parseInvoiceFromFile", () => {
+    const pdfBytes = Buffer.from("%PDF-1.4 fake pdf content", "utf8");
+    const pdfBase64 = pdfBytes.toString("base64");
+
+    it("returns the structured extraction on the happy path", async () => {
+      mockGenerateContent.mockResolvedValue(
+        genResponse({
+          clientName: "Quotation Source Inc",
+          clientEmail: "billing@source.example",
+          currency: "USD",
+          issueDate: "2026-05-22",
+          dueDate: "2026-06-21",
+          lineItems: [
+            {
+              description: "Website redesign",
+              quantity: 1,
+              unit: "project",
+              rate: 4500,
+              amount: 4500,
+            },
+          ],
+        }),
+      );
+
+      const result = await service.parseInvoiceFromFile(pdfBytes, "application/pdf");
+
+      expect(result.clientName).toBe("Quotation Source Inc");
+      expect(result.lineItems).toHaveLength(1);
+      expect(result.lineItems[0]).toMatchObject({
+        description: "Website redesign",
+        rate: 4500,
+        amount: 4500,
+      });
+    });
+
+    it("sends the file as inlineData parts with mimeType + base64", async () => {
+      mockGenerateContent.mockResolvedValue(genResponse(validDraft));
+
+      await service.parseInvoiceFromFile(pdfBytes, "application/pdf");
+
+      const args = mockGenerateContent.mock.calls[0][0];
+      expect(args.model).toBe("gemini-2.5-flash");
+      expect(Array.isArray(args.contents)).toBe(true);
+      const parts = args.contents as Array<{ inlineData?: { mimeType: string; data: string } }>;
+      const filePart = parts.find((p) => p.inlineData);
+      expect(filePart?.inlineData?.mimeType).toBe("application/pdf");
+      expect(filePart?.inlineData?.data).toBe(pdfBase64);
+      // Base64 must not carry a data: prefix — Gemini expects raw base64
+      expect(filePart?.inlineData?.data.startsWith("data:")).toBe(false);
+    });
+
+    it("includes a user instruction prompting extraction from the document", async () => {
+      mockGenerateContent.mockResolvedValue(genResponse(validDraft));
+
+      await service.parseInvoiceFromFile(pdfBytes, "application/pdf");
+
+      const args = mockGenerateContent.mock.calls[0][0];
+      const parts = args.contents as Array<{ text?: string }>;
+      const textPart = parts.find((p) => p.text);
+      expect(textPart?.text).toMatch(/extract/i);
+    });
+
+    it("works for PNG images, not just PDFs", async () => {
+      mockGenerateContent.mockResolvedValue(genResponse(validDraft));
+      const pngBytes = Buffer.from("\x89PNG\r\n\x1a\n fake png", "binary");
+
+      await service.parseInvoiceFromFile(pngBytes, "image/png");
+
+      const args = mockGenerateContent.mock.calls[0][0];
+      const parts = args.contents as Array<{ inlineData?: { mimeType: string; data: string } }>;
+      expect(parts.find((p) => p.inlineData)?.inlineData?.mimeType).toBe("image/png");
+    });
+
+    it("uses the same JSON structured-output config as the text path", async () => {
+      mockGenerateContent.mockResolvedValue(genResponse(validDraft));
+
+      await service.parseInvoiceFromFile(pdfBytes, "application/pdf");
+
+      const args = mockGenerateContent.mock.calls[0][0];
+      expect(args.config.responseMimeType).toBe("application/json");
+      expect(args.config.responseSchema).toMatchObject({ type: "OBJECT" });
+    });
+
+    it("uses the vision-mode system instruction with a skip-totals rule", async () => {
+      mockGenerateContent.mockResolvedValue(genResponse(validDraft));
+
+      await service.parseInvoiceFromFile(pdfBytes, "application/pdf");
+
+      const args = mockGenerateContent.mock.calls[0][0];
+      const instruction: string = args.config.systemInstruction;
+      // Vision-specific framing
+      expect(instruction).toMatch(/document|quotation/i);
+      // Skip-totals rule (subtotal/tax/total rows should not become line items)
+      expect(instruction).toMatch(/subtotal/i);
+      expect(instruction).toMatch(/tax/i);
+      expect(instruction).toMatch(/total/i);
+    });
+
+    it("anchors today's date into the system instruction for relative-date resolution", async () => {
+      mockGenerateContent.mockResolvedValue(genResponse(validDraft));
+
+      await service.parseInvoiceFromFile(pdfBytes, "application/pdf");
+
+      const today = new Date().toISOString().slice(0, 10);
+      const args = mockGenerateContent.mock.calls[0][0];
+      expect(args.config.systemInstruction).toContain(today);
+    });
+
+    it("retries once on a transient 503 and then succeeds", async () => {
+      mockGenerateContent
+        .mockRejectedValueOnce(new ApiError({ status: 503, message: "service unavailable" }))
+        .mockResolvedValueOnce(genResponse({ ...validDraft, clientName: "Retried PDF Co" }));
+
+      const result = await service.parseInvoiceFromFile(pdfBytes, "application/pdf");
+
+      expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+      expect(result.clientName).toBe("Retried PDF Co");
+    });
+
+    it("does not retry quota errors (429)", async () => {
+      mockGenerateContent.mockRejectedValue(
+        new ApiError({ status: 429, message: "quota exceeded" }),
+      );
+
+      await expect(service.parseInvoiceFromFile(pdfBytes, "application/pdf")).rejects.toThrow(
+        /AI service is unavailable/,
+      );
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws when Gemini returns an empty response", async () => {
+      mockGenerateContent.mockResolvedValue({ text: undefined });
+
+      await expect(service.parseInvoiceFromFile(pdfBytes, "application/pdf")).rejects.toThrow();
+    });
+
+    it("throws when JSON does not match the schema", async () => {
+      mockGenerateContent.mockResolvedValue(genResponse({ clientName: "incomplete" }));
+
+      await expect(service.parseInvoiceFromFile(pdfBytes, "application/pdf")).rejects.toThrow();
+    });
+  });
 });

@@ -3,6 +3,7 @@ import { Prisma, type PayoutMethod as PayoutMethodRow } from "@prisma/client";
 import type { AddPayoutMethodBody, PayoutMethod, PayoutMethodType } from "@raket/contracts";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { StripeService } from "../integrations/stripe/stripe.service";
+import type { SetupIntentResult } from "../integrations/stripe/stripe.types";
 import { toPayoutMethodDto, CONTRACT_TO_PRISMA_TYPE } from "./payout-methods.mapper";
 
 @Injectable()
@@ -11,6 +12,10 @@ export class PayoutMethodsService {
     private readonly prisma: PrismaService,
     private readonly stripeService: StripeService,
   ) {}
+
+  async createSetupIntent(userId: string): Promise<SetupIntentResult> {
+    return this.stripeService.createSetupIntent(userId);
+  }
 
   async list(userId: string): Promise<PayoutMethod[]> {
     const rows = await this.prisma.payoutMethod.findMany({

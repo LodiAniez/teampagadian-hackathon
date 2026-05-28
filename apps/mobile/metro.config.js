@@ -25,4 +25,17 @@ config.resolver.extraNodeModules = {
   "react-dom": path.resolve(workspaceRoot, "node_modules/react-dom"),
 };
 
+// On web, several native-only packages must be stubbed out so the web bundle
+// resolves. Each stub lives in src/lib/ and mirrors the real module's API.
+const WEB_STUBS = {
+  "@stripe/stripe-react-native": path.resolve(__dirname, "src/lib/stripe-web-stub.js"),
+  "expo-secure-store": path.resolve(__dirname, "src/lib/secure-store-web-stub.js"),
+};
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === "web" && WEB_STUBS[moduleName]) {
+    return { type: "sourceFile", filePath: WEB_STUBS[moduleName] };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = withNativeWind(config, { input: "./global.css" });

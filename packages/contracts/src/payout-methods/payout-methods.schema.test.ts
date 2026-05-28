@@ -8,8 +8,10 @@ import {
   MayaDetailsSchema,
   PayoutMethodSchema,
   PayoutMethodTypeSchema,
+  SetupIntentResponseSchema,
   type AddPayoutMethodBody,
   type PayoutMethod,
+  type SetupIntentResponse,
 } from "./payout-methods.schema";
 
 const baseEnvelope = {
@@ -59,6 +61,27 @@ const validBankAccount = {
     accountName: "Juan Dela Cruz",
   },
 } satisfies z.input<typeof PayoutMethodSchema>;
+
+describe("SetupIntentResponseSchema", () => {
+  it("parses a valid Stripe SetupIntent client_secret", () => {
+    expect(() =>
+      SetupIntentResponseSchema.parse({ clientSecret: "seti_1A2b3C_secret_xyz" }),
+    ).not.toThrow();
+  });
+
+  it("rejects a client_secret that does not start with seti_", () => {
+    expect(() => SetupIntentResponseSchema.parse({ clientSecret: "pm_1A2b3C" })).toThrow();
+  });
+
+  it("rejects an empty client_secret", () => {
+    expect(() => SetupIntentResponseSchema.parse({ clientSecret: "" })).toThrow();
+  });
+
+  it("narrows clientSecret to string at the TypeScript level", () => {
+    const res = {} as SetupIntentResponse;
+    expectTypeOf(res.clientSecret).toEqualTypeOf<string>();
+  });
+});
 
 describe("PayoutMethodTypeSchema", () => {
   it("accepts the four supported wire-level types (lowercase, matching Prisma @map)", () => {

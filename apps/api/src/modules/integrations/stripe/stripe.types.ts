@@ -34,7 +34,6 @@ export interface StripeClient {
     sessions: {
       create(
         params: Stripe.Checkout.SessionCreateParams,
-        options?: Stripe.RequestOptions,
       ): Promise<{ id: string; url: string | null }>;
     };
   };

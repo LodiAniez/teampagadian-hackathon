@@ -29,7 +29,7 @@ export function SegmentedControl<V extends string>({
         return (
           <Pressable
             key={option.value}
-            accessibilityRole="tab"
+            accessibilityRole="button"
             accessibilityState={{ selected: active }}
             onPress={() => onChange(option.value)}
             className={cn(

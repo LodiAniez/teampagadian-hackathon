@@ -12,6 +12,15 @@ export class PayoutMethodsController {
   constructor(private readonly payoutMethods: PayoutMethodsService) {}
 
   @UseGuards(AuthGuard)
+  @TsRestHandler(contract.payoutMethods.setupIntent)
+  setupIntent(@CurrentUser() user: AuthUser) {
+    return tsRestHandler(contract.payoutMethods.setupIntent, async () => {
+      const { clientSecret } = await this.payoutMethods.createSetupIntent(user.id);
+      return { status: 201, body: { clientSecret } };
+    });
+  }
+
+  @UseGuards(AuthGuard)
   @TsRestHandler(contract.payoutMethods.list)
   list(@CurrentUser() user: AuthUser) {
     return tsRestHandler(contract.payoutMethods.list, async () => {

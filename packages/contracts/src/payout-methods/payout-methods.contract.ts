@@ -1,7 +1,11 @@
 import { initContract } from "@ts-rest/core";
 import { z } from "zod";
 import { ErrorResponseSchema } from "../shared/error";
-import { AddPayoutMethodBodySchema, PayoutMethodSchema } from "./payout-methods.schema";
+import {
+  AddPayoutMethodBodySchema,
+  PayoutMethodSchema,
+  SetupIntentResponseSchema,
+} from "./payout-methods.schema";
 
 const c = initContract();
 
@@ -11,6 +15,16 @@ const authedHeaders = z.object({
 
 export const payoutMethodsContract = c.router(
   {
+    setupIntent: {
+      method: "POST",
+      path: "/setup-intent",
+      body: z.undefined(),
+      responses: {
+        201: SetupIntentResponseSchema,
+        401: ErrorResponseSchema,
+      },
+      summary: "Create a Stripe SetupIntent and return its client_secret for PaymentSheet",
+    },
     list: {
       method: "GET",
       path: "/",

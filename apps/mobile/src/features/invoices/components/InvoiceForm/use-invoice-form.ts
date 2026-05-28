@@ -70,6 +70,8 @@ export function useInvoiceForm() {
 
   async function saveAndGo(values: CreateInvoiceBody, nextRoute: "send" | "dashboard") {
     try {
+      console.log("values", values);
+
       const result = await create.save(values);
       if (result.status !== 201) return;
       if (nextRoute === "send") {

@@ -20,6 +20,8 @@ export class InvoiceParserService {
     const raw = await this.gemini.parseInvoiceText(text, defaultCurrency);
     const warnings: string[] = [];
 
+    console.log("raw", raw);
+
     collectTopLevelWarnings(raw, warnings);
 
     const lineItems: ParsedInvoiceLineItem[] = [];

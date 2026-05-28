@@ -1,0 +1,8 @@
+# Sample quotations used by smoke:quotation are intentionally untracked.
+# Drop your own PDFs / PNGs / JPEGs here; do not commit them — they may
+# contain real client names, amounts, or addresses.
+*.pdf
+*.png
+*.jpg
+*.jpeg
+!.gitkeep

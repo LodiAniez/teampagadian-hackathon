@@ -20,17 +20,17 @@
  * parseable response, non-zero on any failure.
  */
 import { readFile, stat } from "node:fs/promises";
-import path from "node:path";
-import { extname } from "node:path";
-import { NestFactory } from "@nestjs/core";
-import { Logger } from "@nestjs/common";
+import path, { extname } from "node:path";
+import { ConfigService } from "@nestjs/config";
+import { config as loadEnv } from "dotenv";
 import {
   QUOTATION_MAX_BYTES,
   QUOTATION_MIME_TYPES,
   type QuotationMimeType,
   SupportedCurrencySchema,
 } from "@raket/contracts";
-import { AppModule } from "../src/app.module";
+import { type EnvConfig } from "../src/common/config/env.schema";
+import { GeminiService } from "../src/modules/integrations/gemini/gemini.service";
 import { InvoiceParserService } from "../src/modules/invoices/invoice-parser.service";
 
 const TAG = "parse-quotation-smoke";
@@ -69,45 +69,53 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   }
-  if (!(QUOTATION_MIME_TYPES as readonly string[]).includes(mimeType)) {
-    console.error(`Unexpected MIME mapping: ${mimeType}`);
-    process.exit(1);
-  }
 
   const defaultCurrency = defaultCurrencyArg
     ? SupportedCurrencySchema.parse(defaultCurrencyArg)
     : undefined;
 
-  const logger = new Logger(TAG);
-  logger.log(`Loading ${abs} (${stats.size} bytes, ${mimeType})`);
-  const buffer = await readFile(abs);
+  // Load .env from repo root (same path AppConfigModule uses). dotenv won't
+  // overwrite vars already in process.env, so externally-set values still win.
+  loadEnv({ path: path.resolve(__dirname, "../../../.env") });
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ["error", "warn"],
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("GEMINI_API_KEY not set. Add it to the repo-root .env or export it.");
+    process.exit(1);
+  }
+  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+
+  // Build a real ConfigService with only the keys GeminiService reads.
+  // Skipping AppConfigModule (and its full EnvSchema validation) lets the
+  // script run on machines that don't have MORPH_* / STRIPE_* / RESEND_*
+  // configured — none of those are needed to parse a quotation.
+  const config = new ConfigService<EnvConfig, true>({
+    GEMINI_API_KEY: apiKey,
+    GEMINI_MODEL: model,
   });
 
-  try {
-    const parser = app.get(InvoiceParserService);
+  const gemini = new GeminiService(config);
+  const parser = new InvoiceParserService(gemini);
 
-    const before = Date.now();
-    const draft = await parser.parseFromFile(buffer, mimeType, defaultCurrency);
-    const elapsedMs = Date.now() - before;
+  console.log(`[${TAG}] Loading ${abs} (${stats.size} bytes, ${mimeType})`);
+  const buffer = await readFile(abs);
 
-    logger.log(`✓ Parsed in ${elapsedMs}ms`);
-    // Use console.log for the payload itself so it's clean for grep/jq.
-    console.log(JSON.stringify(draft, null, 2));
+  const before = Date.now();
+  const draft = await parser.parseFromFile(buffer, mimeType, defaultCurrency);
+  const elapsedMs = Date.now() - before;
 
-    if (draft.lineItems.length === 0) {
-      logger.warn(
-        "Result has zero line items — Gemini saw the file but couldn't extract any work rows.",
-      );
-    }
-    if (draft.warnings.length > 0) {
-      logger.warn(`${draft.warnings.length} warning(s):`);
-      for (const w of draft.warnings) logger.warn(`  - ${w}`);
-    }
-  } finally {
-    await app.close();
+  console.log(`[${TAG}] ✓ Parsed in ${elapsedMs}ms`);
+  // Pretty-print the payload itself on stdout so it can be piped through jq.
+  console.log(JSON.stringify(draft, null, 2));
+
+  if (draft.lineItems.length === 0) {
+    console.warn(
+      `[${TAG}] Result has zero line items — Gemini saw the file but couldn't extract any work rows.`,
+    );
+  }
+  if (draft.warnings.length > 0) {
+    console.warn(`[${TAG}] ${draft.warnings.length} warning(s):`);
+    for (const w of draft.warnings) console.warn(`  - ${w}`);
   }
 }
 

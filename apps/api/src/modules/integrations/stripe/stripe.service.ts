@@ -85,22 +85,29 @@ export class StripeService {
     clientEmail: string,
     successUrl: string,
   ): Promise<CheckoutSessionResult> {
-    const session = await this.stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: clientEmail,
-      line_items: [
-        {
-          price_data: {
-            currency: invoice.currency.toLowerCase(),
-            product_data: { name: `Invoice ${invoice.number}` },
-            unit_amount: Math.round(invoice.amount * 100),
+    // Keyed on invoiceId so a retry after a transient failure (DB blip between
+    // session creation and the final invoice.update) returns the same Stripe
+    // session instead of orphaning the first one — Stripe stores the key for
+    // ~24h, which covers any realistic retry window.
+    const session = await this.stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        customer_email: clientEmail,
+        line_items: [
+          {
+            price_data: {
+              currency: invoice.currency.toLowerCase(),
+              product_data: { name: `Invoice ${invoice.number}` },
+              unit_amount: Math.round(invoice.amount * 100),
+            },
+            quantity: 1,
           },
-          quantity: 1,
-        },
-      ],
-      success_url: successUrl,
-      metadata: { invoiceId: invoice.id },
-    });
+        ],
+        success_url: successUrl,
+        metadata: { invoiceId: invoice.id },
+      },
+      { idempotencyKey: `send-invoice-${invoice.id}` },
+    );
 
     if (!session.url) {
       throw new InternalServerErrorException(

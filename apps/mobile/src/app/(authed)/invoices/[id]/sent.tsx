@@ -21,6 +21,30 @@ export default function InvoiceSentScreen() {
     send(id, clientEmail).catch(() => {});
   }, [id, clientEmail, send]);
 
+  // Defense-in-depth: the form's saveAndGo should always pass clientEmail, but
+  // if a route-param gap drops it the user would otherwise land on a blank
+  // screen with no recovery path. Surface the problem explicitly.
+  if (!id || !clientEmail) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ title: "Missing details", presentation: "modal" }} />
+        <View className="flex-1 items-center justify-center gap-4 px-6">
+          <Text className="text-4xl">⚠</Text>
+          <Text className="text-lg font-semibold text-gray-900">Missing client email</Text>
+          <Text className="text-center text-sm text-gray-500">
+            Go back and re-enter the client's email before sending the invoice.
+          </Text>
+          <Pressable
+            onPress={() => router.back()}
+            className="mt-2 rounded-xl bg-gray-100 px-6 py-3"
+          >
+            <Text className="font-semibold text-gray-700">Go back</Text>
+          </Pressable>
+        </View>
+      </Screen>
+    );
+  }
+
   if (isSending) {
     return (
       <Screen>

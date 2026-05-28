@@ -274,7 +274,7 @@ export class InvoicesService {
 
       const publicShareToken = randomBytes(16).toString("base64url");
 
-      const appUrl = this.config.get("NEXT_PUBLIC_APP_URL", { infer: true });
+      const appUrl = this.config.get("APP_URL", { infer: true });
       const successUrl = `${appUrl}/invoices/${invoiceId}/paid`;
 
       session = await this.stripeService.createInvoiceCheckoutSession(

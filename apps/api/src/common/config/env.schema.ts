@@ -30,7 +30,11 @@ export const EnvSchema = z.object({
   RESEND_API_KEY: z.string().startsWith("re_"),
   RESEND_FROM_EMAIL: z.string().email().optional(),
 
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  // Web app origin used to build Stripe success_url etc. Named without the
+  // NEXT_PUBLIC_ prefix because that prefix is Next.js's client-bundle marker
+  // and means nothing on the API — naming it APP_URL stops reviewers from
+  // assuming the variable can't reach the NestJS process.
+  APP_URL: z.string().url().default("http://localhost:3000"),
   // Comma-separated allowlist of browser origins for CORS. Parsed into a
   // validated URL array; each entry must be a full origin (no trailing path).
   CORS_ORIGINS: z

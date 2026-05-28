@@ -11,7 +11,7 @@ function baseEnv(): Record<string, string> {
     STRIPE_SECRET_KEY: "sk_test_123",
     GEMINI_API_KEY: "test-gemini-key",
     RESEND_API_KEY: "re_test",
-    NEXT_PUBLIC_APP_URL: "https://app.example.com",
+    APP_URL: "https://app.example.com",
   };
 }
 

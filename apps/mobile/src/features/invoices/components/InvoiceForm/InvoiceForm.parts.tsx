@@ -7,8 +7,8 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
+import { parseNumber } from "@/lib/parse-number";
 import type { CreateInvoiceLineItem } from "@raket/contracts";
-import { parseNumber } from "../../utils/parse-number";
 import {
   computeInvoiceTotal,
   computeLineTotal,

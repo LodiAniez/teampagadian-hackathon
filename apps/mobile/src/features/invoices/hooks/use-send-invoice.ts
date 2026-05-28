@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { api } from "@/lib/api-client";
 import type { SendInvoiceResponse } from "@raket/contracts";
-import { normalizeError } from "../utils/error";
+import { normalizeError } from "@/lib/error";
 
 export function useSendInvoice() {
   const mutation = api.invoices.send.useMutation();

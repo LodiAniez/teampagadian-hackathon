@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+// EVM hex shapes. Reused for the two Morph address vars (USDC contract +
+// Coins.ph deposit destination); private-key regex is single-use but kept
+// alongside for legibility.
+const HEX_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+const HEX_PRIVATE_KEY_RE = /^0x[0-9a-fA-F]{64}$/;
+
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
@@ -47,6 +53,15 @@ export const EnvSchema = z.object({
         .filter(Boolean),
     )
     .pipe(z.array(z.string().url()).min(1)),
+
+  // Morph Hoodi settlement-leg vars. Provisioned by TEA-75 in Railway;
+  // consumed by SettlementService for viem on-chain transfers (TEA-76).
+  // All required at boot — there is no safe default for any of them.
+  MORPH_HOT_WALLET_PRIVATE_KEY: z.string().regex(HEX_PRIVATE_KEY_RE),
+  MORPH_USDC_CONTRACT_ADDRESS: z.string().regex(HEX_ADDRESS_RE),
+  MORPH_COINSPH_DEPOSIT_ADDRESS: z.string().regex(HEX_ADDRESS_RE),
+  MORPH_RPC_URL: z.string().url(),
+  MORPH_CHAIN_ID: z.coerce.number().int().positive(),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;

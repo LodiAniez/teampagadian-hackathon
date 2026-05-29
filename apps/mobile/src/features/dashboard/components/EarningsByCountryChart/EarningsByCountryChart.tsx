@@ -1,8 +1,27 @@
 import React, { memo } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
-import { PolarChart, Pie } from "victory-native";
+import Svg, { Path } from "react-native-svg";
 import { useEarningsByCountryChart } from "./use-earnings-by-country-chart";
 import { formatPhp } from "@/lib/format";
+
+const SIZE = 160;
+const CX = SIZE / 2;
+const CY = SIZE / 2;
+const R_OUTER = SIZE / 2;
+const R_INNER = R_OUTER * 0.6;
+
+function donutArc(start: number, end: number) {
+  const largeArc = end - start > Math.PI ? 1 : 0;
+  const x1 = CX + R_OUTER * Math.cos(start);
+  const y1 = CY + R_OUTER * Math.sin(start);
+  const x2 = CX + R_OUTER * Math.cos(end);
+  const y2 = CY + R_OUTER * Math.sin(end);
+  const x3 = CX + R_INNER * Math.cos(end);
+  const y3 = CY + R_INNER * Math.sin(end);
+  const x4 = CX + R_INNER * Math.cos(start);
+  const y4 = CY + R_INNER * Math.sin(start);
+  return `M ${x1} ${y1} A ${R_OUTER} ${R_OUTER} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${R_INNER} ${R_INNER} 0 ${largeArc} 0 ${x4} ${y4} Z`;
+}
 
 export const EarningsByCountryChart = memo(function EarningsByCountryChart() {
   const { slices, total, isLoading, error, onSlicePress } = useEarningsByCountryChart();
@@ -24,19 +43,30 @@ export const EarningsByCountryChart = memo(function EarningsByCountryChart() {
   }
 
   const selected = slices.find((s) => s.isSelected);
+  let cursor = -Math.PI / 2;
+  const arcs = slices.map((s) => {
+    const sweep = total > 0 ? (s.totalPhp / total) * Math.PI * 2 : 0;
+    const arc = { ...s, start: cursor, end: cursor + sweep };
+    cursor += sweep;
+    return arc;
+  });
 
   return (
     <View className="flex-row items-center gap-4">
-      <View className="relative h-44 w-44">
-        <PolarChart data={slices} labelKey="country" valueKey="totalPhp" colorKey="color">
-          <Pie.Chart innerRadius="60%">
-            {({ slice }) => (
-              <Pie.Slice key={slice.label} animate={{ type: "spring", duration: 300 }} />
-            )}
-          </Pie.Chart>
-        </PolarChart>
+      <View style={{ width: SIZE, height: SIZE }} className="relative">
+        <Svg width={SIZE} height={SIZE}>
+          {arcs.map((a) => (
+            <Path
+              key={a.country}
+              d={donutArc(a.start, a.end)}
+              fill={a.color}
+              opacity={selected && !a.isSelected ? 0.4 : 1}
+              onPress={() => onSlicePress(a.country)}
+            />
+          ))}
+        </Svg>
 
-        <View className="absolute inset-0 items-center justify-center">
+        <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
           {selected ? (
             <>
               <Text className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">

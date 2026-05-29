@@ -1,26 +1,16 @@
-import { useState, useEffect } from "react";
-import { useChartPressState } from "victory-native";
+import { useState, useMemo } from "react";
 import { useDashboardSummary } from "../../hooks/use-dashboard-summary";
 import { formatPhp } from "@/lib/format";
 
-export type TooltipInfo = { label: string; x: number; y: number };
-
 export function useEarningsBarChart() {
   const { data, isLoading, error } = useDashboardSummary();
-  const { state, isActive } = useChartPressState({ x: "", y: { amountPhp: 0 } });
-  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!isActive) {
-      setTooltip(null);
-      return;
-    }
-    setTooltip({
-      label: formatPhp(state.y.amountPhp.value.value),
-      x: state.x.position.value,
-      y: state.y.amountPhp.position.value,
-    });
-  }, [isActive, state]);
+  const rows = useMemo(
+    () => data.map((d) => ({ ...d, formattedAmount: formatPhp(d.amountPhp) })),
+    [data],
+  );
+  const max = useMemo(() => Math.max(...rows.map((r) => r.amountPhp), 1), [rows]);
 
-  return { data, isLoading, error, chartPressState: state, tooltip };
+  return { data: rows, max, isLoading, error, selectedIndex, onSelect: setSelectedIndex };
 }

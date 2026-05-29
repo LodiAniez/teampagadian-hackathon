@@ -68,13 +68,13 @@ describe("AuthService", () => {
       expect(call.data.defaultCurrency).toBeUndefined();
     });
 
-    it("maps bir2303Election contract enum to Prisma enum", async () => {
+    it("passes bir2303Election through to Prisma unchanged", async () => {
       prisma.user.update.mockResolvedValue({
         ...mockUser,
-        bir2303Election: "EIGHT_PERCENT" as never,
+        bir2303Election: "EIGHT_PERCENT",
       });
 
-      await service.updateProfile("user-id", { bir2303Election: "8_percent" });
+      await service.updateProfile("user-id", { bir2303Election: "EIGHT_PERCENT" });
 
       const call = prisma.user.update.mock.calls[0][0];
       expect(call.data).toHaveProperty("bir2303Election", "EIGHT_PERCENT");

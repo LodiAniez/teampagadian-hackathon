@@ -54,7 +54,7 @@ describe("TaxController", () => {
     findUnique.mockResolvedValue({ bir2303Election: "EIGHT_PERCENT" });
     const computed = {
       grossReceiptsPhp: 487_250,
-      election: "8_percent" as const,
+      election: "EIGHT_PERCENT" as const,
       taxDuePhp: 38_980,
       formCode: "1701Q" as const,
       formName: "Quarterly Income Tax Return",
@@ -71,7 +71,7 @@ describe("TaxController", () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(computed);
-    expect(computeQuarterly).toHaveBeenCalledWith(USER_ID, 1, 2026, "8_percent");
+    expect(computeQuarterly).toHaveBeenCalledWith(USER_ID, 1, 2026, "EIGHT_PERCENT");
   });
 
   it("returns 422 when the user has no bir2303Election set", async () => {

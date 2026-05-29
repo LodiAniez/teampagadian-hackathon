@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { UpdateProfileDto, User } from "@raket/contracts";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { CONTRACT_TO_PRISMA_ELECTION, toUserDto } from "./auth.mapper";
+import { toUserDto } from "./auth.mapper";
 
 @Injectable()
 export class AuthService {
@@ -24,7 +24,7 @@ export class AuthService {
           defaultHourlyRate: body.defaultHourlyRate,
         }),
         ...(body.bir2303Election !== undefined && {
-          bir2303Election: CONTRACT_TO_PRISMA_ELECTION[body.bir2303Election],
+          bir2303Election: body.bir2303Election,
         }),
       },
     });

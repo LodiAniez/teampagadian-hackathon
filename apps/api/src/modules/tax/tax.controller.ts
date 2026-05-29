@@ -4,7 +4,6 @@ import {
   UnprocessableEntityException,
   UseGuards,
 } from "@nestjs/common";
-import { BirElection as PrismaBirElection } from "@prisma/client";
 import { TsRestHandler, tsRestHandler } from "@ts-rest/nest";
 import { contract, type BirElection } from "@raket/contracts";
 import { AuthGuard } from "../../common/auth/auth.guard";
@@ -12,14 +11,6 @@ import { CurrentUser } from "../../common/auth/current-user.decorator";
 import type { AuthUser } from "../../common/auth/auth-user.types";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { TaxCalculatorService } from "./tax-calculator.service";
-
-// Prisma's TS enum names (uppercase) → contract's lowercase wire values.
-// The auth module owns the canonical mapper; duplicating two entries here
-// avoids a cross-module dependency on its internal mapper just for this lookup.
-const PRISMA_TO_CONTRACT_ELECTION: Record<PrismaBirElection, BirElection> = {
-  EIGHT_PERCENT: "8_percent",
-  GRADUATED: "graduated",
-};
 
 @UseGuards(AuthGuard)
 @Controller()
@@ -63,6 +54,6 @@ export class TaxController {
         "User has not selected a BIR regime; complete profile setup first",
       );
     }
-    return PRISMA_TO_CONTRACT_ELECTION[user.bir2303Election];
+    return user.bir2303Election;
   }
 }

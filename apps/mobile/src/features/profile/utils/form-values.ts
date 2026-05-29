@@ -46,7 +46,7 @@ export function buildSetupProfileDefaults(draft: UpdateProfileDto | null): Setup
     businessName: draft?.businessName ?? "",
     defaultCurrency: currency,
     defaultHourlyRate: draft?.defaultHourlyRate ?? { amount: undefined, currency },
-    bir2303Election: draft?.bir2303Election ?? "8_percent",
+    bir2303Election: draft?.bir2303Election ?? "EIGHT_PERCENT",
   };
 }
 

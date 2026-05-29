@@ -64,12 +64,12 @@ describe("draft-storage", () => {
     await saveDraft({
       name: "Ada",
       defaultHourlyRate: { amount: 75, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
     await expect(loadDraft()).resolves.toEqual({
       name: "Ada",
       defaultHourlyRate: { amount: 75, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
   });
 });

@@ -36,7 +36,7 @@ describe("pickPostVerifyRoute", () => {
           businessName: "Ada Freelance",
           defaultCurrency: "USD",
           defaultHourlyRate: null,
-          bir2303Election: "8_percent",
+          bir2303Election: "EIGHT_PERCENT",
           ...FIXED_DATES,
         },
       }),

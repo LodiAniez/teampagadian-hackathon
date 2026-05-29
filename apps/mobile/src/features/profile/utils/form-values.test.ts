@@ -13,17 +13,17 @@ describe("buildSetupProfileDefaults", () => {
       businessName: "",
       defaultCurrency: "USD",
       defaultHourlyRate: { amount: undefined, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
   });
 
   it("merges a saved draft over the defaults", () => {
     const merged = buildSetupProfileDefaults({
       name: "Ada Lovelace",
-      bir2303Election: "graduated",
+      bir2303Election: "GRADUATED",
     });
     expect(merged.name).toBe("Ada Lovelace");
-    expect(merged.bir2303Election).toBe("graduated");
+    expect(merged.bir2303Election).toBe("GRADUATED");
     expect(merged.defaultCurrency).toBe("USD");
   });
 
@@ -48,7 +48,7 @@ describe("applyBusinessNameAutoFill", () => {
       businessName: "",
       defaultCurrency: "USD",
       defaultHourlyRate: { amount: undefined, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
     expect(next.businessName).toBe("Ada Lovelace Freelance");
   });
@@ -59,7 +59,7 @@ describe("applyBusinessNameAutoFill", () => {
       businessName: "   ",
       defaultCurrency: "USD",
       defaultHourlyRate: { amount: undefined, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
     expect(next.businessName).toBe("Ada Freelance");
   });
@@ -70,7 +70,7 @@ describe("applyBusinessNameAutoFill", () => {
       businessName: "Northwind Studio",
       defaultCurrency: "USD",
       defaultHourlyRate: { amount: undefined, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
     expect(next.businessName).toBe("Northwind Studio");
   });
@@ -81,7 +81,7 @@ describe("applyBusinessNameAutoFill", () => {
       businessName: "",
       defaultCurrency: "USD",
       defaultHourlyRate: { amount: undefined, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
     expect(next.businessName).toBe("");
   });
@@ -94,9 +94,9 @@ describe("toUpdateProfileBody", () => {
       businessName: "",
       defaultCurrency: "",
       defaultHourlyRate: { amount: undefined, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
-    expect(body).toEqual({ name: "Ada", bir2303Election: "8_percent" });
+    expect(body).toEqual({ name: "Ada", bir2303Election: "EIGHT_PERCENT" });
   });
 
   it("includes all fields when they are populated", () => {
@@ -105,14 +105,14 @@ describe("toUpdateProfileBody", () => {
       businessName: "Northwind",
       defaultCurrency: "EUR",
       defaultHourlyRate: { amount: 95, currency: "EUR" },
-      bir2303Election: "graduated",
+      bir2303Election: "GRADUATED",
     });
     expect(body).toEqual({
       name: "Ada Lovelace",
       businessName: "Northwind",
       defaultCurrency: "EUR",
       defaultHourlyRate: { amount: 95, currency: "EUR" },
-      bir2303Election: "graduated",
+      bir2303Election: "GRADUATED",
     });
   });
 
@@ -122,7 +122,7 @@ describe("toUpdateProfileBody", () => {
       businessName: "  Northwind  ",
       defaultCurrency: "USD",
       defaultHourlyRate: { amount: undefined, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
     expect(body.name).toBe("Ada");
     expect(body.businessName).toBe("Northwind");
@@ -132,8 +132,8 @@ describe("toUpdateProfileBody", () => {
     // form.watch emits SetupProfileFormValuesPartial during the brief
     // mount/reset window. Defensive ?? "" inside the function means
     // autosave can't crash + swallow the error via `void`.
-    const body = toUpdateProfileBody({ bir2303Election: "8_percent" });
-    expect(body).toEqual({ bir2303Election: "8_percent" });
+    const body = toUpdateProfileBody({ bir2303Election: "EIGHT_PERCENT" });
+    expect(body).toEqual({ bir2303Election: "EIGHT_PERCENT" });
   });
 
   it("falls back to defaultCurrency for an unspecified rate currency", () => {
@@ -141,7 +141,7 @@ describe("toUpdateProfileBody", () => {
       name: "Ada",
       defaultCurrency: "EUR",
       defaultHourlyRate: { amount: 90 },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
     expect(body.defaultHourlyRate).toEqual({ amount: 90, currency: "EUR" });
   });
@@ -153,7 +153,7 @@ describe("SetupProfileFormSchema", () => {
     businessName: "Ada Freelance",
     defaultCurrency: "USD",
     defaultHourlyRate: { amount: 80, currency: "USD" },
-    bir2303Election: "8_percent" as const,
+    bir2303Election: "EIGHT_PERCENT" as const,
   };
 
   it("accepts a fully-populated form", () => {
@@ -176,7 +176,7 @@ describe("SetupProfileFormSchema", () => {
         businessName: "",
         defaultCurrency: "USD",
         defaultHourlyRate: { amount: undefined, currency: "USD" },
-        bir2303Election: "8_percent",
+        bir2303Election: "EIGHT_PERCENT",
       }).success,
     ).toBe(true);
   });

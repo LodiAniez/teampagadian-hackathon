@@ -23,13 +23,13 @@ type BirOption = { value: BirElection; label: string; description: string };
 
 export const BIR_OPTIONS: ReadonlyArray<BirOption> = [
   {
-    value: "8_percent",
+    value: "EIGHT_PERCENT",
     label: "8% of gross receipts",
     description:
       "Simplest option for most freelancers. One flat rate; replaces graduated income tax and percentage tax.",
   },
   {
-    value: "graduated",
+    value: "GRADUATED",
     label: "Graduated income tax + 1% percentage tax",
     description:
       "Pay tiered income tax (0–35%) plus 1% on gross receipts. Worth it only if you have large deductible expenses.",

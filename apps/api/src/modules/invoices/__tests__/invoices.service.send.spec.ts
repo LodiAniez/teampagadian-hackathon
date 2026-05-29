@@ -212,6 +212,7 @@ describe("InvoicesService.send", () => {
       status: "sent",
       stripeCheckoutUrl: CHECKOUT_URL,
       qrCodeDataUrl: QR_DATA_URL,
+      publicShareToken: "test-share-token",
     });
     // Two findFirst calls: first sees draft (pre-lock), second sees the
     // winner's already-persisted sent row.
@@ -220,7 +221,10 @@ describe("InvoicesService.send", () => {
 
     const result = await service.send(USER_ID, INVOICE_ID, SEND_BODY);
 
-    expect(result.checkoutUrl).toBe(CHECKOUT_URL);
+    // TEA-86: lock-loser short-circuit surfaces the Raket preview URL, not
+    // the stored Stripe URL (PRD §5 — all send-paths consistent).
+    expect(result.checkoutUrl).toMatch(PREVIEW_URL_REGEX);
+    expect(result.checkoutUrl).not.toBe(CHECKOUT_URL);
     expect(result.qrCodeDataUrl).toBe(QR_DATA_URL);
     expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
     expect(mockEmail.sendInvoiceEmail).not.toHaveBeenCalled();
@@ -295,12 +299,16 @@ describe("InvoicesService.send", () => {
       status: "sent",
       stripeCheckoutUrl: CHECKOUT_URL,
       qrCodeDataUrl: QR_DATA_URL,
+      publicShareToken: "test-share-token",
     });
     mockPrisma.invoice.findFirst.mockResolvedValue(row);
 
     const result = await service.send(USER_ID, INVOICE_ID, SEND_BODY);
 
-    expect(result.checkoutUrl).toBe(CHECKOUT_URL);
+    // TEA-86: already-sent short-circuit surfaces the Raket preview URL,
+    // not the stored Stripe URL (PRD §5 — all send-paths consistent).
+    expect(result.checkoutUrl).toMatch(PREVIEW_URL_REGEX);
+    expect(result.checkoutUrl).not.toBe(CHECKOUT_URL);
     expect(result.qrCodeDataUrl).toBe(QR_DATA_URL);
     expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
     expect(mockEmail.sendInvoiceEmail).not.toHaveBeenCalled();
@@ -352,5 +360,25 @@ describe("InvoicesService.send", () => {
     await expect(service.send(USER_ID, INVOICE_ID, SEND_BODY)).rejects.toThrow(
       InternalServerErrorException,
     );
+  });
+
+  // TEA-86 regression guard: a sent row missing publicShareToken (legacy
+  // pre-TEA-37 data) must NOT short-circuit returning a malformed preview
+  // URL like `${APP_URL}/invoice/null`. The tightened guard throws so the
+  // caller surfaces a 500 rather than a broken link.
+  it("throws when a sent row has no publicShareToken (prevents malformed preview URL)", async () => {
+    mockPrisma.invoice.findFirst.mockResolvedValue(
+      buildInvoiceRow({
+        status: "sent",
+        stripeCheckoutUrl: CHECKOUT_URL,
+        qrCodeDataUrl: QR_DATA_URL,
+        publicShareToken: null,
+      }),
+    );
+
+    await expect(service.send(USER_ID, INVOICE_ID, SEND_BODY)).rejects.toThrow(
+      InternalServerErrorException,
+    );
+    expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
   });
 });

@@ -17,6 +17,7 @@ import type { Client as ClientRow } from "@prisma/client";
 import {
   type CreateInvoiceBody,
   type Invoice,
+  type InvoiceListItem,
   type InvoiceStatus,
   type PaginatedResponse,
   type ParseInvoiceTextBody,
@@ -36,6 +37,7 @@ import { StripeService } from "../integrations/stripe/stripe.service";
 import { InvoiceParserService } from "./invoice-parser.service";
 import {
   toInvoiceDto,
+  toInvoiceListItem,
   toPublicInvoiceDto,
   type InvoiceRowWithClientAndLineItems,
 } from "./invoices.mapper";
@@ -83,6 +85,42 @@ export class InvoicesService {
 
     return {
       data: rows.map(toInvoiceDto),
+      nextCursor,
+    };
+  }
+
+  async listItems(userId: string, query: ListQuery): Promise<PaginatedResponse<InvoiceListItem>> {
+    const rows = await this.prisma.invoice.findMany({
+      where: {
+        userId,
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.clientId ? { clientId: query.clientId } : {}),
+      },
+      // SETTLED-only filter is load-bearing: SETTLING/FAILED payments must NOT
+      // populate amountPhp in the list view, or a user sees a green "paid in PHP"
+      // figure for an on-chain transfer that's still inflight or has failed.
+      include: {
+        client: { select: { id: true, name: true } },
+        payments: {
+          where: { morphTxStatus: "SETTLED" },
+          orderBy: { paidAt: "desc" },
+          take: 1,
+          select: { amountPhp: true },
+        },
+      },
+      take: query.limit + 1,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      orderBy: { createdAt: "desc" },
+    });
+
+    let nextCursor: string | null = null;
+    if (rows.length > query.limit) {
+      const last = rows.pop();
+      nextCursor = last ? last.id : null;
+    }
+
+    return {
+      data: rows.map(toInvoiceListItem),
       nextCursor,
     };
   }

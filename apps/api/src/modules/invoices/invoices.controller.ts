@@ -20,6 +20,14 @@ export class InvoicesController {
     });
   }
 
+  @TsRestHandler(contract.invoices.listItems)
+  listItems(@CurrentUser() user: AuthUser) {
+    return tsRestHandler(contract.invoices.listItems, async ({ query }) => {
+      const page = await this.invoices.listItems(user.id, query);
+      return { status: 200, body: page };
+    });
+  }
+
   @TsRestHandler(contract.invoices.getById)
   getById(@CurrentUser() user: AuthUser) {
     return tsRestHandler(contract.invoices.getById, async ({ params }) => {

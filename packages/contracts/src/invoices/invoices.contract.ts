@@ -4,6 +4,7 @@ import { ErrorResponseSchema } from "../shared/error";
 import { PaginatedResponseSchema, PaginationQuerySchema } from "../shared/pagination";
 import {
   CreateInvoiceBodySchema,
+  InvoiceListItemSchema,
   InvoiceSchema,
   InvoiceStatusSchema,
   ParseInvoiceTextBodySchema,
@@ -33,6 +34,19 @@ export const invoicesContract = c.router(
         401: ErrorResponseSchema,
       },
       summary: "List invoices for the authenticated user",
+    },
+    listItems: {
+      method: "GET",
+      path: "/list-items",
+      query: PaginationQuerySchema.extend({
+        status: InvoiceStatusSchema.optional(),
+        clientId: z.string().uuid().optional(),
+      }),
+      responses: {
+        200: PaginatedResponseSchema(InvoiceListItemSchema),
+        401: ErrorResponseSchema,
+      },
+      summary: "Lightweight invoices list for the list page + dashboard recent invoices",
     },
     getById: {
       method: "GET",

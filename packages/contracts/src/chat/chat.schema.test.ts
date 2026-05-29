@@ -5,6 +5,7 @@ import {
   ChatRequestSchema,
   ChatToolNameSchema,
   ClientSummaryResultSchema,
+  BACKUP_PROMPT_CHIPS,
   DEMO_PROMPT_CHIPS,
   DemoPromptChipSchema,
   EarningsResultSchema,
@@ -176,20 +177,28 @@ describe("ClientSummaryResultSchema", () => {
   });
 });
 
-describe("DEMO_PROMPT_CHIPS", () => {
-  it("each chip matches DemoPromptChipSchema", () => {
-    for (const chip of DEMO_PROMPT_CHIPS) {
+describe("demo prompt chips", () => {
+  const allChips = [...DEMO_PROMPT_CHIPS, ...BACKUP_PROMPT_CHIPS];
+
+  it("every primary and backup chip matches DemoPromptChipSchema", () => {
+    for (const chip of allChips) {
       expect(() => DemoPromptChipSchema.parse(chip)).not.toThrow();
     }
   });
 
-  it("has unique chip ids", () => {
-    const ids = DEMO_PROMPT_CHIPS.map((c) => c.id);
+  it("has unique chip ids across primary + backup sets", () => {
+    const ids = allChips.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("exercises every tool at least once across the demo set", () => {
-    // One chip per tool so the demo lands on all four cards.
-    expect(DEMO_PROMPT_CHIPS.length).toBeGreaterThanOrEqual(ChatToolNameSchema.options.length);
+  it("primary chips cover every tool exactly once (one card each)", () => {
+    const tools = DEMO_PROMPT_CHIPS.map((c) => c.tool);
+    expect(new Set(tools)).toEqual(new Set(ChatToolNameSchema.options));
+    expect(tools.length).toBe(ChatToolNameSchema.options.length);
+  });
+
+  it("provides a backup phrasing for every tool", () => {
+    const backupTools = new Set(BACKUP_PROMPT_CHIPS.map((c) => c.tool));
+    expect(backupTools).toEqual(new Set(ChatToolNameSchema.options));
   });
 });

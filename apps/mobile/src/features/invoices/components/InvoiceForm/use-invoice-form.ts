@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import {
   CreateInvoiceBodySchema,
   QUOTATION_MIME_TYPES,
@@ -90,16 +92,44 @@ export function useInvoiceForm() {
     }
   }
 
-  async function onPickPress() {
+  async function onPickDocument() {
+    // iOS honours `type` strictly, so we pass the precise MIME list. Android's
+    // Storage Access Framework hides files whose MIME entry doesn't *exactly*
+    // match — files in Downloads often have a generic `application/octet-stream`
+    // type and get filtered out, leaving the user with "No items to choose"
+    // even when their PDF is right there. We pass `*/*` on Android and let
+    // `validatePickedAsset` reject anything that isn't actually PDF/PNG/JPEG.
+    const pickerType = Platform.OS === "android" ? ["*/*"] : [...QUOTATION_MIME_TYPES];
     const result = await DocumentPicker.getDocumentAsync({
-      // Picker filter — Android treats this as a hint, so the server + client
-      // also re-validate. iOS honours it strictly.
-      type: [...QUOTATION_MIME_TYPES],
+      type: pickerType,
       copyToCacheDirectory: true,
       multiple: false,
     });
     if (result.canceled || result.assets.length === 0) return;
     await onPickFile(result.assets[0]);
+  }
+
+  async function onPickImage() {
+    // Gallery picker — covers screenshots/photos of quotes. On Android the
+    // system Photo Picker (used here) sidesteps Samsung/Xiaomi's compact
+    // Documents UI, which often hides files in Downloads behind a "Recent"-only
+    // view with no navigation. PDFs still need onPickDocument.
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: false,
+      quality: 1,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+    await onPickFile({
+      uri: asset.uri,
+      // expo-image-picker sometimes returns null fileName on Android when the
+      // source isn't in MediaStore. Synthesise a name from the MIME so the
+      // server-side multipart handler (which keys on filename) doesn't 400.
+      name: asset.fileName ?? `quote.${guessExtension(asset.mimeType)}`,
+      mimeType: asset.mimeType,
+      size: asset.fileSize,
+    });
   }
 
   function onModeChange(next: InvoiceMode) {
@@ -167,6 +197,12 @@ export function useInvoiceForm() {
     selectedFile,
     uploadPanelMessage,
     isUploading: parseQuotation.isParsing,
-    onPickPress,
+    onPickDocument,
+    onPickImage,
   };
+}
+
+function guessExtension(mimeType: string | undefined): string {
+  if (mimeType === "image/png") return "png";
+  return "jpg";
 }

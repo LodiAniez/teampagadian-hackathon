@@ -1,6 +1,6 @@
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "void";
 
-export interface EarningsSummary {
+export type EarningsSummary = {
   totalEarnedPhp: number;
   totalEarnedAllTimePhp: number;
   thisMonthPhp: number;
@@ -8,30 +8,30 @@ export interface EarningsSummary {
   pendingInvoicesCount: number;
   invoiceCountThisMonth: number;
   savingsVsPaypalPhp: number;
-}
+};
 
-export interface EarningsByMonth {
+export type EarningsByMonth = {
   month: string; // YYYY-MM
   amountPhp: number;
   invoiceCount: number;
-}
+};
 
-export interface EarningsByClient {
+export type EarningsByClient = {
   clientId: string;
   clientName: string;
   country: string | null;
   totalPhp: number;
   invoiceCount: number;
   lastPaidAt: string | null; // ISO-8601 UTC
-}
+};
 
-export interface EarningsByCountry {
+export type EarningsByCountry = {
   country: string;
   totalPhp: number;
   clientCount: number;
-}
+};
 
-export interface InvoiceListItem {
+export type InvoiceListItem = {
   id: string;
   number: string;
   status: InvoiceStatus;
@@ -42,4 +42,4 @@ export interface InvoiceListItem {
   issueDate: string; // YYYY-MM-DD
   dueDate: string; // YYYY-MM-DD
   paidAt: string | null; // ISO-8601 UTC
-}
+};

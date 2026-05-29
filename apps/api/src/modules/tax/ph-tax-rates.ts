@@ -78,7 +78,7 @@ export const PH_TAX_RATES = {
     "1701Q_Q2": "2026-08-15",
     "1701Q_Q3": "2026-11-15",
     // Annual return for tax year 2026 is filed by April 15, 2027 (NIRC §51(C)(1)).
-    "1701_ANNUAL_2026": "2027-04-15",
+    "1701_ANNUAL_TY2026": "2027-04-15",
   },
 } as const;
 

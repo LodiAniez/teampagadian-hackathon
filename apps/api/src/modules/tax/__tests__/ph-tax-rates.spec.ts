@@ -33,7 +33,7 @@ describe("PH_TAX_RATES (TEA-58 verified constants)", () => {
     expect(PH_TAX_RATES.DEADLINES["1701Q_Q1"]).toBe("2026-05-15");
     expect(PH_TAX_RATES.DEADLINES["1701Q_Q2"]).toBe("2026-08-15");
     expect(PH_TAX_RATES.DEADLINES["1701Q_Q3"]).toBe("2026-11-15");
-    expect(PH_TAX_RATES.DEADLINES["1701_ANNUAL_2026"]).toBe("2027-04-15");
+    expect(PH_TAX_RATES.DEADLINES["1701_ANNUAL_TY2026"]).toBe("2027-04-15");
   });
 
   it("brackets are non-overlapping and sorted ascending", () => {
@@ -46,6 +46,19 @@ describe("PH_TAX_RATES (TEA-58 verified constants)", () => {
     const bases = PH_TAX_RATES.GRADUATED_BRACKETS.map((b) => b.baseAmount);
     for (let i = 1; i < bases.length; i++) {
       expect(bases[i]).toBeGreaterThanOrEqual(bases[i - 1]);
+    }
+  });
+
+  it("deadlines are chronologically ordered (Q1 < Q2 < Q3 < annual)", () => {
+    const dates = [
+      PH_TAX_RATES.DEADLINES["1701Q_Q1"],
+      PH_TAX_RATES.DEADLINES["1701Q_Q2"],
+      PH_TAX_RATES.DEADLINES["1701Q_Q3"],
+      PH_TAX_RATES.DEADLINES["1701_ANNUAL_TY2026"],
+    ].map((d) => Date.parse(d));
+
+    for (let i = 1; i < dates.length; i++) {
+      expect(dates[i]).toBeGreaterThan(dates[i - 1]);
     }
   });
 });

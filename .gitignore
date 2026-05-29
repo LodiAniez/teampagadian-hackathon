@@ -44,3 +44,14 @@ coverage/
 .claude/skills/
 .agents/
 .tmp
+
+# Expo (machine-specific dev session state — created when `expo start` runs at repo root
+# instead of from apps/mobile/, where the workspace .gitignore covers it)
+.expo/
+
+# Multi-agent coordination briefs (Planner/Implementor/Reviewer scratch; not deliverables)
+.nex-tasks/
+
+# Stray root tsconfig — Turborepo monorepo has per-workspace tsconfigs; root-level one
+# is an accidental artifact from editors/CLI tools running in the wrong dir
+/tsconfig.json

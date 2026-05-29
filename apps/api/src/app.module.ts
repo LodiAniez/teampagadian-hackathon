@@ -15,6 +15,7 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { PayoutMethodsModule } from "./modules/payout-methods/payout-methods.module";
 import { SettlementModule } from "./modules/settlement/settlement.module";
+import { TaxModule } from "./modules/tax/tax.module";
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SettlementModule } from "./modules/settlement/settlement.module";
     PayoutMethodsModule,
     SettlementModule,
     DashboardModule,
+    TaxModule,
   ],
 })
 export class AppModule {}

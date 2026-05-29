@@ -35,6 +35,23 @@ export const InvoiceSchema = z.object({
 });
 export type Invoice = z.infer<typeof InvoiceSchema>;
 
+// Slim projection for list/dashboard views. clientName flattened, line items
+// omitted, internal fields (sourceType, stripe ids, userId) dropped. amountPhp
+// is the latest SETTLED payment's PHP amount, null until on-chain settlement.
+export const InvoiceListItemSchema = z.object({
+  id: z.string().uuid(),
+  number: z.string(),
+  status: InvoiceStatusSchema,
+  clientName: z.string(),
+  amount: z.number().nonnegative(),
+  currency: SupportedCurrencySchema,
+  amountPhp: z.number().nonnegative().nullable(),
+  issueDate: z.string().date(),
+  dueDate: z.string().date(),
+  createdAt: z.string().datetime(),
+});
+export type InvoiceListItem = z.infer<typeof InvoiceListItemSchema>;
+
 export const CreateInvoiceLineItemSchema = InvoiceLineItemSchema.omit({
   id: true,
   amount: true,

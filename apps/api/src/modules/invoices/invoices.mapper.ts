@@ -2,6 +2,7 @@ import type {
   Client,
   Invoice,
   InvoiceLineItem,
+  InvoiceListItem,
   PublicInvoiceResponse,
   SupportedCurrency,
 } from "@raket/contracts";
@@ -9,12 +10,18 @@ import type {
   Client as ClientRow,
   Invoice as InvoiceRow,
   InvoiceLineItem as InvoiceLineItemRow,
+  Payment as PaymentRow,
   User as UserRow,
 } from "@prisma/client";
 
 export type InvoiceRowWithClientAndLineItems = InvoiceRow & {
   client: ClientRow;
   lineItems: InvoiceLineItemRow[];
+};
+
+export type InvoiceRowForListItem = InvoiceRow & {
+  client: Pick<ClientRow, "id" | "name">;
+  payments: Array<Pick<PaymentRow, "amountPhp">>;
 };
 
 export type InvoiceRowForPublic = InvoiceRowWithClientAndLineItems & {
@@ -53,6 +60,21 @@ export function toClientDto(row: ClientRow): Client {
     defaultCurrency: asSupportedCurrency(row.defaultCurrency),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toInvoiceListItem(row: InvoiceRowForListItem): InvoiceListItem {
+  return {
+    id: row.id,
+    number: row.number,
+    status: row.status,
+    clientName: row.client.name,
+    amount: Number(row.amount),
+    currency: asSupportedCurrency(row.currency),
+    amountPhp: row.payments[0] ? Number(row.payments[0].amountPhp) : null,
+    issueDate: isoDate(row.issueDate),
+    dueDate: isoDate(row.dueDate),
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

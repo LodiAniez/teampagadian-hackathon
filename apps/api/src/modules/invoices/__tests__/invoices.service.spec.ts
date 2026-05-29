@@ -12,6 +12,7 @@ import type {
   Client as ClientRow,
   Invoice as InvoiceRow,
   InvoiceLineItem as InvoiceLineItemRow,
+  Payment as PaymentRow,
   User as UserRow,
 } from "@prisma/client";
 import { InvoicesService } from "../invoices.service";
@@ -532,6 +533,166 @@ describe("InvoicesService", () => {
         client: true,
         lineItems: { orderBy: { position: "asc" } },
       });
+    });
+  });
+
+  describe("listItems", () => {
+    const mockPaymentRow = (overrides: Partial<Pick<PaymentRow, "amountPhp">> = {}) => ({
+      amountPhp: new Prisma.Decimal("12345.67"),
+      ...overrides,
+    });
+
+    const mockListItemRow = (
+      overrides: Partial<InvoiceRow> = {},
+      payments: Array<Pick<PaymentRow, "amountPhp">> = [],
+    ) =>
+      ({
+        ...mockInvoiceRow(overrides),
+        client: { id: clientId, name: "Acme Co." },
+        payments,
+      }) as never;
+
+    it("returns rows with amountPhp: null when no SETTLED payment exists", async () => {
+      prisma.invoice.findMany.mockResolvedValue([
+        mockListItemRow({ id: "inv-a" }),
+        mockListItemRow({ id: "inv-b" }),
+      ]);
+
+      const result = await service.listItems(userId, { limit: 20 });
+
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].amountPhp).toBeNull();
+      expect(result.data[1].amountPhp).toBeNull();
+    });
+
+    it("populates amountPhp from the latest SETTLED payment when present", async () => {
+      prisma.invoice.findMany.mockResolvedValue([
+        mockListItemRow({ id: "inv-1", status: "paid" }, [mockPaymentRow()]),
+      ]);
+
+      const result = await service.listItems(userId, { limit: 20 });
+
+      expect(result.data[0].amountPhp).toBe(12345.67);
+    });
+
+    it("filters the payments include to morphTxStatus: SETTLED (excludes SETTLING/FAILED)", async () => {
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      await service.listItems(userId, { limit: 20 });
+
+      const call = prisma.invoice.findMany.mock.calls[0][0];
+      expect(call?.include).toMatchObject({
+        payments: { where: { morphTxStatus: "SETTLED" } },
+      });
+    });
+
+    it("orders the payments include by paidAt desc, take: 1 (latest SETTLED wins)", async () => {
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      await service.listItems(userId, { limit: 20 });
+
+      const call = prisma.invoice.findMany.mock.calls[0][0];
+      expect(call?.include).toMatchObject({
+        payments: { orderBy: { paidAt: "desc" }, take: 1 },
+      });
+    });
+
+    it("returns nextCursor as the id of the popped tail row when more pages exist", async () => {
+      // findMany returns limit+1 rows; the (limit+1)-th is the tail whose id becomes nextCursor.
+      const rows = Array.from({ length: 21 }, (_, i) =>
+        mockListItemRow({ id: `inv-${String(i).padStart(2, "0")}` }),
+      );
+      prisma.invoice.findMany.mockResolvedValue(rows);
+
+      const result = await service.listItems(userId, { limit: 20 });
+
+      expect(result.data).toHaveLength(20);
+      expect(result.nextCursor).toBe("inv-20");
+    });
+
+    it("returns nextCursor: null on the last page (rows < limit + 1)", async () => {
+      prisma.invoice.findMany.mockResolvedValue([
+        mockListItemRow({ id: "inv-1" }),
+        mockListItemRow({ id: "inv-2" }),
+      ]);
+
+      const result = await service.listItems(userId, { limit: 20 });
+
+      expect(result.data).toHaveLength(2);
+      expect(result.nextCursor).toBeNull();
+    });
+
+    it("forwards cursor + skip: 1 only when query.cursor is set", async () => {
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      await service.listItems(userId, { limit: 20 });
+      const noCursorCall = prisma.invoice.findMany.mock.calls[0][0];
+      expect(noCursorCall?.cursor).toBeUndefined();
+      expect(noCursorCall?.skip).toBeUndefined();
+
+      await service.listItems(userId, { limit: 20, cursor: "inv-cursor" });
+      const cursorCall = prisma.invoice.findMany.mock.calls[1][0];
+      expect(cursorCall?.cursor).toEqual({ id: "inv-cursor" });
+      expect(cursorCall?.skip).toBe(1);
+    });
+
+    it("forwards the status filter verbatim (lowercase 'paid', no uppercase normalization)", async () => {
+      // Regression guard: the ticket pseudocode suggested uppercase ("PAID");
+      // the Prisma enum is lowercase. This locks the where clause to the
+      // contract value.
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      await service.listItems(userId, { limit: 20, status: "paid" });
+
+      const call = prisma.invoice.findMany.mock.calls[0][0];
+      expect(call?.where).toMatchObject({ status: "paid" });
+    });
+
+    it("forwards the clientId filter to the where clause", async () => {
+      prisma.invoice.findMany.mockResolvedValue([]);
+      const filterClientId = "00000000-0000-0000-0000-0000000000c1";
+
+      await service.listItems(userId, { limit: 20, clientId: filterClientId });
+
+      const call = prisma.invoice.findMany.mock.calls[0][0];
+      expect(call?.where).toMatchObject({ clientId: filterClientId });
+    });
+
+    it("always scopes the where clause to the authenticated userId", async () => {
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      await service.listItems(userId, { limit: 20, status: "paid", clientId });
+
+      const call = prisma.invoice.findMany.mock.calls[0][0];
+      expect(call?.where).toMatchObject({ userId });
+    });
+
+    it("orders by createdAt desc (reverse chronological)", async () => {
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      await service.listItems(userId, { limit: 20 });
+
+      const call = prisma.invoice.findMany.mock.calls[0][0];
+      expect(call?.orderBy).toEqual({ createdAt: "desc" });
+    });
+
+    it("drops sensitive/internal fields from the list-item projection", async () => {
+      prisma.invoice.findMany.mockResolvedValue([
+        mockListItemRow({ id: "inv-1", stripePaymentIntentId: "pi_test_123" }),
+      ]);
+
+      const result = await service.listItems(userId, { limit: 20 });
+      const item = result.data[0];
+
+      for (const leaked of [
+        "clientId",
+        "lineItems",
+        "stripePaymentIntentId",
+        "sourceType",
+        "userId",
+      ]) {
+        expect(item).not.toHaveProperty(leaked);
+      }
     });
   });
 

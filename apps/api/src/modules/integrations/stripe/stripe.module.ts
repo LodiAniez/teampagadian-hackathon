@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Stripe from "stripe";
 import type { EnvConfig } from "@/common/config/env.schema";
@@ -8,7 +8,7 @@ import { StripeService } from "./stripe.service";
 import { STRIPE_CLIENT, type StripeClient } from "./stripe.types";
 
 @Module({
-  imports: [PaymentsModule],
+  imports: [forwardRef(() => PaymentsModule)],
   controllers: [StripeWebhookController],
   providers: [
     {

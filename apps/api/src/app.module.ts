@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { ScheduleModule } from "@nestjs/schedule";
 import { AppConfigModule } from "./common/config/config.module";
 import { CommonAuthModule } from "./common/auth/auth.module";
 import { HealthModule } from "./common/health/health.module";
@@ -18,6 +19,7 @@ import { SettlementModule } from "./modules/settlement/settlement.module";
   imports: [
     AppConfigModule,
     PrismaModule,
+    ScheduleModule.forRoot(),
     CommonAuthModule,
     HealthModule,
     GeminiModule,

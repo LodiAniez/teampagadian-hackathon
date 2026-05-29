@@ -14,6 +14,7 @@ describe("StripeService", () => {
       setupIntents: { create: vi.fn() },
       paymentMethods: { retrieve: vi.fn() },
       checkout: { sessions: { create: vi.fn() } },
+      paymentIntents: { retrieve: vi.fn() },
       webhooks: { constructEvent: vi.fn() },
     };
     mockConfigGet = vi.fn();
@@ -144,6 +145,48 @@ describe("StripeService", () => {
       await expect(
         service.createInvoiceCheckoutSession(invoice, "client@example.com", "https://app/ok"),
       ).rejects.toThrow(/returned no URL/);
+    });
+  });
+
+  describe("tryGetPaymentSucceededEvent", () => {
+    it("returns a mapped PaymentSucceededEvent when the PI status is succeeded", async () => {
+      vi.mocked(mockStripe.paymentIntents.retrieve).mockResolvedValueOnce({
+        id: "pi_test_succeeded",
+        status: "succeeded",
+        amount_received: 10000,
+        currency: "usd",
+        latest_charge: "ch_test_456",
+        created: 1748476800,
+        metadata: { invoice_id: "invoice-1" },
+      });
+
+      const result = await service.tryGetPaymentSucceededEvent("pi_test_succeeded");
+
+      expect(mockStripe.paymentIntents.retrieve).toHaveBeenCalledWith("pi_test_succeeded");
+      expect(result).toEqual({
+        stripePaymentIntentId: "pi_test_succeeded",
+        stripeChargeId: "ch_test_456",
+        amountReceived: 100,
+        amountReceivedCurrency: "USD",
+        invoiceId: "invoice-1",
+        paidAt: new Date(1748476800 * 1000),
+      });
+    });
+
+    it("returns null and does not map when the PI status is not succeeded", async () => {
+      vi.mocked(mockStripe.paymentIntents.retrieve).mockResolvedValueOnce({
+        id: "pi_test_pending",
+        status: "requires_payment_method",
+        amount_received: 0,
+        currency: "usd",
+        latest_charge: null,
+        created: 1748476800,
+        metadata: { invoice_id: "invoice-1" },
+      });
+
+      const result = await service.tryGetPaymentSucceededEvent("pi_test_pending");
+
+      expect(result).toBeNull();
     });
   });
 

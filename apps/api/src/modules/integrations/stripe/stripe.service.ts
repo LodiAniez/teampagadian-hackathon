@@ -9,6 +9,8 @@ import {
 import { ConfigService } from "@nestjs/config";
 import type { CardDetails } from "@raket/contracts";
 import type { EnvConfig } from "@/common/config/env.schema";
+import type { PaymentSucceededEvent } from "../../payments/payments.types";
+import { toPaymentSucceededEvent } from "./stripe-event-mappers";
 import {
   STRIPE_CLIENT,
   type CheckoutSessionResult,
@@ -129,6 +131,24 @@ export class StripeService {
    * own signature-verification error propagates as-is; the webhook controller
    * should catch it and return 400.
    */
+  /**
+   * Retrieves a PaymentIntent and, if its status is `succeeded`, returns the
+   * domain `PaymentSucceededEvent` the payments slice consumes. Returns null
+   * for any non-succeeded status so callers can no-op without branching on
+   * Stripe-specific values.
+   *
+   * Stripe SDK types do not cross this slice boundary — the same Zod mapper
+   * the webhook controller uses (`toPaymentSucceededEvent`) parses `data.object`
+   * here, keeping the trust boundary discipline (docs/api-convention.md §8).
+   *
+   * Consumed by: PaymentIntentPoller (TEA-77) as a webhook fallback.
+   */
+  async tryGetPaymentSucceededEvent(piId: string): Promise<PaymentSucceededEvent | null> {
+    const pi = await this.stripe.paymentIntents.retrieve(piId);
+    if (pi.status !== "succeeded") return null;
+    return toPaymentSucceededEvent(pi);
+  }
+
   constructEvent(rawBody: Buffer | string, signature: string): WebhookEvent {
     const secret = this.config.get("STRIPE_WEBHOOK_SECRET", { infer: true });
     if (!secret) {

@@ -204,6 +204,25 @@ describe("DashboardService", () => {
       expect(result[0].country).toBe("US");
     });
 
+    it("preserves country: null in the by-client row (intentional asymmetry vs by-country)", async () => {
+      const rows = [
+        {
+          clientId: "22222222-2222-2222-2222-222222222222",
+          clientName: "No-Country Co",
+          country: null,
+          totalPhp: 1000,
+          invoiceCount: 1,
+          lastPaidAt: new Date("2026-05-01T00:00:00.000Z"),
+        },
+      ];
+      h.prisma.$queryRaw.mockResolvedValueOnce(rows);
+
+      const result = await h.service.getEarningsByClient(USER_ID, 10);
+
+      expect(result[0].country).toBeNull();
+      expect(result[0].clientName).toBe("No-Country Co");
+    });
+
     it("forwards the limit parameter into the query values", async () => {
       h.prisma.$queryRaw.mockResolvedValueOnce([]);
       await h.service.getEarningsByClient(USER_ID, 25);
@@ -244,6 +263,14 @@ describe("DashboardService", () => {
 
       const result = await h.service.getEarningsByCountry(USER_ID);
       expect(result[1].country).toBe("XX");
+    });
+
+    it("emits COALESCE(c.country, 'XX') in the SQL template (regression guard for the ticket's nullable-country correction)", async () => {
+      h.prisma.$queryRaw.mockResolvedValueOnce([]);
+      await h.service.getEarningsByCountry(USER_ID);
+      const stringsArray = h.prisma.$queryRaw.mock.calls[0]?.[0] as readonly string[];
+      const sql = stringsArray.join("");
+      expect(sql).toContain("COALESCE(c.country, 'XX')");
     });
 
     it("forwards the userId into the query values (defense-in-depth)", async () => {

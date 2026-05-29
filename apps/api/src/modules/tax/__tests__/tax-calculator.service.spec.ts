@@ -49,11 +49,11 @@ describe("TaxCalculatorService.computeQuarterly", () => {
   it("8% election: ₱487,250 of settled payments in Q1 → ₱38,980 tax due (no exemption)", async () => {
     h.prisma.payment.findMany.mockResolvedValue(REFERENCE_8PCT_PAYMENTS as never);
 
-    const result = await h.service.computeQuarterly(USER_ID, 1, 2026, "8_percent");
+    const result = await h.service.computeQuarterly(USER_ID, 1, 2026, "EIGHT_PERCENT");
 
     expect(result.grossReceiptsPhp).toBe(487_250);
     expect(result.taxDuePhp).toBe(38_980);
-    expect(result.election).toBe("8_percent");
+    expect(result.election).toBe("EIGHT_PERCENT");
     expect(result.breakdown).toBe("₱487,250 × 8% = ₱38,980");
   });
 
@@ -62,18 +62,18 @@ describe("TaxCalculatorService.computeQuarterly", () => {
       payment("500000.00", "2026-05-01T00:00:00.000Z", "Acme Co."),
     ] as never);
 
-    const result = await h.service.computeQuarterly(USER_ID, 2, 2026, "graduated");
+    const result = await h.service.computeQuarterly(USER_ID, 2, 2026, "GRADUATED");
 
     expect(result.grossReceiptsPhp).toBe(500_000);
     expect(result.taxDuePhp).toBe(42_500);
-    expect(result.election).toBe("graduated");
+    expect(result.election).toBe("GRADUATED");
     expect(result.breakdown).toBe("Graduated tax on ₱500,000: ₱42,500");
   });
 
   it("returns zeros + empty breakdown for a quarter with no settled payments", async () => {
     h.prisma.payment.findMany.mockResolvedValue([] as never);
 
-    const result = await h.service.computeQuarterly(USER_ID, 1, 2026, "8_percent");
+    const result = await h.service.computeQuarterly(USER_ID, 1, 2026, "EIGHT_PERCENT");
 
     expect(result.grossReceiptsPhp).toBe(0);
     expect(result.taxDuePhp).toBe(0);
@@ -84,8 +84,8 @@ describe("TaxCalculatorService.computeQuarterly", () => {
   it("uses 1701Q form code for quarterly returns regardless of election", async () => {
     h.prisma.payment.findMany.mockResolvedValue([] as never);
 
-    const eight = await h.service.computeQuarterly(USER_ID, 1, 2026, "8_percent");
-    const graduated = await h.service.computeQuarterly(USER_ID, 1, 2026, "graduated");
+    const eight = await h.service.computeQuarterly(USER_ID, 1, 2026, "EIGHT_PERCENT");
+    const graduated = await h.service.computeQuarterly(USER_ID, 1, 2026, "GRADUATED");
 
     expect(eight.formCode).toBe("1701Q");
     expect(eight.formName).toBe("Quarterly Income Tax Return");
@@ -95,9 +95,9 @@ describe("TaxCalculatorService.computeQuarterly", () => {
   it("pulls the deadline from PH_TAX_RATES.DEADLINES (not a hardcoded string)", async () => {
     h.prisma.payment.findMany.mockResolvedValue([] as never);
 
-    const q1 = await h.service.computeQuarterly(USER_ID, 1, 2026, "8_percent");
-    const q2 = await h.service.computeQuarterly(USER_ID, 2, 2026, "8_percent");
-    const q3 = await h.service.computeQuarterly(USER_ID, 3, 2026, "8_percent");
+    const q1 = await h.service.computeQuarterly(USER_ID, 1, 2026, "EIGHT_PERCENT");
+    const q2 = await h.service.computeQuarterly(USER_ID, 2, 2026, "EIGHT_PERCENT");
+    const q3 = await h.service.computeQuarterly(USER_ID, 3, 2026, "EIGHT_PERCENT");
 
     expect(q1.deadline).toBe(PH_TAX_RATES.DEADLINES["1701Q_Q1"]);
     expect(q2.deadline).toBe(PH_TAX_RATES.DEADLINES["1701Q_Q2"]);
@@ -107,7 +107,7 @@ describe("TaxCalculatorService.computeQuarterly", () => {
   it("filters Prisma findMany to morphTxStatus: SETTLED + userId + paidAt range (UTC)", async () => {
     h.prisma.payment.findMany.mockResolvedValue([] as never);
 
-    await h.service.computeQuarterly(USER_ID, 1, 2026, "8_percent");
+    await h.service.computeQuarterly(USER_ID, 1, 2026, "EIGHT_PERCENT");
 
     const call = h.prisma.payment.findMany.mock.calls[0][0];
     expect(call?.where).toMatchObject({
@@ -122,7 +122,7 @@ describe("TaxCalculatorService.computeQuarterly", () => {
   it("maps paymentBreakdown rows to { date: YYYY-MM-DD, client, amountPhp: number }", async () => {
     h.prisma.payment.findMany.mockResolvedValue(REFERENCE_8PCT_PAYMENTS as never);
 
-    const result = await h.service.computeQuarterly(USER_ID, 1, 2026, "8_percent");
+    const result = await h.service.computeQuarterly(USER_ID, 1, 2026, "EIGHT_PERCENT");
 
     expect(result.invoiceCount).toBe(3);
     expect(result.paymentBreakdown).toEqual([
@@ -144,7 +144,7 @@ describe("TaxCalculatorService.computeAnnual", () => {
       payment("500000.00", "2026-06-01T00:00:00.000Z"),
     ] as never);
 
-    const result = await h.service.computeAnnual(USER_ID, 2026, "8_percent");
+    const result = await h.service.computeAnnual(USER_ID, 2026, "EIGHT_PERCENT");
 
     expect(result.grossReceiptsPhp).toBe(500_000);
     expect(result.taxDuePhp).toBe(20_000);
@@ -156,7 +156,7 @@ describe("TaxCalculatorService.computeAnnual", () => {
       payment("500000.00", "2026-06-01T00:00:00.000Z"),
     ] as never);
 
-    const result = await h.service.computeAnnual(USER_ID, 2026, "graduated");
+    const result = await h.service.computeAnnual(USER_ID, 2026, "GRADUATED");
 
     expect(result.taxDuePhp).toBe(42_500);
   });
@@ -164,8 +164,8 @@ describe("TaxCalculatorService.computeAnnual", () => {
   it("uses 1701A for 8% election and 1701 for graduated, with form names", async () => {
     h.prisma.payment.findMany.mockResolvedValue([] as never);
 
-    const eight = await h.service.computeAnnual(USER_ID, 2026, "8_percent");
-    const graduated = await h.service.computeAnnual(USER_ID, 2026, "graduated");
+    const eight = await h.service.computeAnnual(USER_ID, 2026, "EIGHT_PERCENT");
+    const graduated = await h.service.computeAnnual(USER_ID, 2026, "GRADUATED");
 
     expect(eight.formCode).toBe("1701A");
     expect(eight.formName).toBe("Annual Income Tax Return (8% election)");
@@ -176,7 +176,7 @@ describe("TaxCalculatorService.computeAnnual", () => {
   it("pulls annual deadline from PH_TAX_RATES.DEADLINES['1701_ANNUAL_TY2026']", async () => {
     h.prisma.payment.findMany.mockResolvedValue([] as never);
 
-    const result = await h.service.computeAnnual(USER_ID, 2026, "graduated");
+    const result = await h.service.computeAnnual(USER_ID, 2026, "GRADUATED");
 
     expect(result.deadline).toBe(PH_TAX_RATES.DEADLINES["1701_ANNUAL_TY2026"]);
   });

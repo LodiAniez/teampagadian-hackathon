@@ -4,7 +4,7 @@ export const PhoneNumberSchema = z
   .string()
   .regex(/^\+[1-9]\d{6,14}$/, "Phone must be E.164 (e.g., +639171234567)");
 
-export const BirElectionSchema = z.enum(["8_percent", "graduated"]);
+export const BirElectionSchema = z.enum(["EIGHT_PERCENT", "GRADUATED"]);
 export type BirElection = z.infer<typeof BirElectionSchema>;
 
 export const UserSchema = z.object({

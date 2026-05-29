@@ -10,7 +10,7 @@ const VALUES: SetupProfileFormValues = {
   businessName: "Ada Lovelace Freelance",
   defaultCurrency: "USD",
   defaultHourlyRate: { amount: 80, currency: "USD" },
-  bir2303Election: "8_percent",
+  bir2303Election: "EIGHT_PERCENT",
 };
 
 describe("submitSetupProfile", () => {
@@ -24,7 +24,7 @@ describe("submitSetupProfile", () => {
       businessName: "Ada Lovelace Freelance",
       defaultCurrency: "USD",
       defaultHourlyRate: { amount: 80, currency: "USD" },
-      bir2303Election: "8_percent",
+      bir2303Election: "EIGHT_PERCENT",
     });
     expect(navigate).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ ok: true });

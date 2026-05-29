@@ -9,18 +9,18 @@ const validUser = {
   businessName: "JDC Studio",
   defaultCurrency: "USD",
   defaultHourlyRate: { amount: 75, currency: "USD" },
-  bir2303Election: "8_percent",
+  bir2303Election: "EIGHT_PERCENT",
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
 } satisfies z.input<typeof UserSchema>;
 
 describe("BirElectionSchema", () => {
-  it("accepts '8_percent'", () => {
-    expect(BirElectionSchema.parse("8_percent")).toBe("8_percent");
+  it("accepts 'EIGHT_PERCENT'", () => {
+    expect(BirElectionSchema.parse("EIGHT_PERCENT")).toBe("EIGHT_PERCENT");
   });
 
-  it("accepts 'graduated'", () => {
-    expect(BirElectionSchema.parse("graduated")).toBe("graduated");
+  it("accepts 'GRADUATED'", () => {
+    expect(BirElectionSchema.parse("GRADUATED")).toBe("GRADUATED");
   });
 
   it("rejects an unknown election value", () => {
@@ -73,7 +73,7 @@ describe("UpdateProfileBodySchema", () => {
     expect(() =>
       UpdateProfileBodySchema.parse({
         defaultHourlyRate: { amount: 100, currency: "USD" },
-        bir2303Election: "graduated",
+        bir2303Election: "GRADUATED",
       }),
     ).not.toThrow();
   });

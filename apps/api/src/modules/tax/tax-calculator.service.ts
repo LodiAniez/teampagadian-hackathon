@@ -26,7 +26,7 @@ export class TaxCalculatorService {
     const grossReceipts = sumGross(payments);
 
     const { taxDuePhp, breakdown } =
-      election === "8_percent"
+      election === "EIGHT_PERCENT"
         ? compute8Percent(grossReceipts, { applyAnnualExemption: false })
         : computeGraduated(grossReceipts);
 
@@ -53,7 +53,7 @@ export class TaxCalculatorService {
     const grossReceipts = sumGross(payments);
 
     const { taxDuePhp, breakdown } =
-      election === "8_percent"
+      election === "EIGHT_PERCENT"
         ? compute8Percent(grossReceipts, { applyAnnualExemption: true })
         : computeGraduated(grossReceipts);
 
@@ -63,9 +63,9 @@ export class TaxCalculatorService {
       grossReceiptsPhp: round2(grossReceipts),
       election,
       taxDuePhp,
-      formCode: election === "8_percent" ? "1701A" : "1701",
+      formCode: election === "EIGHT_PERCENT" ? "1701A" : "1701",
       formName:
-        election === "8_percent"
+        election === "EIGHT_PERCENT"
           ? "Annual Income Tax Return (8% election)"
           : "Annual Income Tax Return",
       deadline: PH_TAX_RATES.DEADLINES["1701_ANNUAL_TY2026"],

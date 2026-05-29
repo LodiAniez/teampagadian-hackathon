@@ -2,6 +2,7 @@ import { initContract } from "@ts-rest/core";
 import { authContract } from "./auth/auth.contract";
 import { invoicesContract } from "./invoices/invoices.contract";
 import { payoutMethodsContract } from "./payout-methods/payout-methods.contract";
+import { publicInvoicesContract } from "./public-invoices/public-invoices.contract";
 
 const c = initContract();
 
@@ -10,6 +11,7 @@ export const contract = c.router(
     auth: authContract,
     invoices: invoicesContract,
     payoutMethods: payoutMethodsContract,
+    publicInvoices: publicInvoicesContract,
   },
   { pathPrefix: "/api/v1" },
 );
@@ -23,3 +25,4 @@ export * from "./auth/auth.schema";
 export * from "./clients/clients.schema";
 export * from "./invoices/invoices.schema";
 export * from "./payout-methods/payout-methods.schema";
+export * from "./public-invoices/public-invoices.schema";

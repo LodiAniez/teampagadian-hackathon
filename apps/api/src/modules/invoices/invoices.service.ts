@@ -22,6 +22,7 @@ import {
   type ParseInvoiceTextBody,
   type ParseQuotationBody,
   type ParsedInvoiceDraft,
+  type PublicInvoiceResponse,
   type QuotationMimeType,
   QUOTATION_MIME_TYPES,
   type SendInvoiceBody,
@@ -33,7 +34,11 @@ import { EmailService } from "../integrations/email/email.service";
 import { QrService } from "../integrations/qr/qr.service";
 import { StripeService } from "../integrations/stripe/stripe.service";
 import { InvoiceParserService } from "./invoice-parser.service";
-import { toInvoiceDto, type InvoiceRowWithClientAndLineItems } from "./invoices.mapper";
+import {
+  toInvoiceDto,
+  toPublicInvoiceDto,
+  type InvoiceRowWithClientAndLineItems,
+} from "./invoices.mapper";
 
 type ListQuery = {
   cursor?: string;
@@ -334,7 +339,9 @@ export class InvoicesService {
       const publicShareToken = randomBytes(16).toString("base64url");
 
       const appUrl = this.config.get("APP_URL", { infer: true });
-      const successUrl = `${appUrl}/invoices/${invoiceId}/paid`;
+      // Singular `/invoice/[token]/paid` — must match the new public page route
+      // and use the share token, not the internal invoice id (TEA-44).
+      const successUrl = `${appUrl}/invoice/${publicShareToken}/paid`;
 
       session = await this.stripeService.createInvoiceCheckoutSession(
         { id: row.id, number: row.number, amount: Number(row.amount), currency: row.currency },
@@ -411,6 +418,28 @@ export class InvoicesService {
 
   async void(_userId: string, _invoiceId: string): Promise<Invoice> {
     throw new NotImplementedException("void: implement state transition + idempotency");
+  }
+
+  // Public read by share token. No auth — the 16-byte randomBytes token is the
+  // capability. Drafts/voids/overdues are hidden behind NotFound so existence
+  // of an unsent invoice doesn't leak. Mapping goes through toPublicInvoiceDto
+  // which enumerates exposed fields explicitly (defense-in-depth).
+  async getByPublicToken(token: string): Promise<PublicInvoiceResponse> {
+    const row = await this.prisma.invoice.findUnique({
+      where: { publicShareToken: token },
+      include: {
+        user: true,
+        client: true,
+        lineItems: { orderBy: { position: "asc" } },
+      },
+    });
+    if (!row) {
+      throw new NotFoundException("Invoice not found");
+    }
+    if (row.status !== "sent" && row.status !== "paid") {
+      throw new NotFoundException("Invoice not found");
+    }
+    return toPublicInvoiceDto(row);
   }
 
   private async findRawInvoice(

@@ -6,10 +6,11 @@ import { StripeModule } from "../integrations/stripe/stripe.module";
 import { InvoiceParserService } from "./invoice-parser.service";
 import { InvoicesController } from "./invoices.controller";
 import { InvoicesService } from "./invoices.service";
+import { PublicInvoicesController } from "./public-invoices.controller";
 
 @Module({
   imports: [CommonAuthModule, StripeModule, QrModule, EmailModule],
-  controllers: [InvoicesController],
+  controllers: [InvoicesController, PublicInvoicesController],
   providers: [InvoicesService, InvoiceParserService],
   exports: [InvoicesService],
 })

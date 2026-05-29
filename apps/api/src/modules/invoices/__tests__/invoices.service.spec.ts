@@ -566,13 +566,16 @@ describe("InvoicesService", () => {
     });
 
     it("populates amountPhp from the latest SETTLED payment when present", async () => {
-      prisma.invoice.findMany.mockResolvedValue([
-        mockListItemRow({ id: "inv-1", status: "paid" }, [mockPaymentRow()]),
-      ]);
+      const mockRow: InvoiceRow = mockInvoiceRow({ id: "inv-1", status: "paid" });
+      prisma.invoice.findMany.mockResolvedValue([mockListItemRow(mockRow, [mockPaymentRow()])]);
 
       const result = await service.listItems(userId, { limit: 20 });
 
       expect(result.data[0].amountPhp).toBe(12345.67);
+      // Regression guard: locks the `amount` (not `total`) field round-trip
+      // against the ticket's pseudocode error. The mapper reads row.amount;
+      // a refactor to row.total would surface as NaN here.
+      expect(result.data[0].amount).toBe(Number(mockRow.amount));
     });
 
     it("filters the payments include to morphTxStatus: SETTLED (excludes SETTLING/FAILED)", async () => {
@@ -622,6 +625,19 @@ describe("InvoicesService", () => {
       expect(result.nextCursor).toBeNull();
     });
 
+    it("returns empty data and null nextCursor when no invoices match", async () => {
+      // Distinct from the "<limit+1 rows" case — explicitly exercises the
+      // zero-rows branch. Sanity-asserts the service didn't short-circuit
+      // before querying (findMany should still be called).
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      const result = await service.listItems(userId, { limit: 20 });
+
+      expect(result.data).toEqual([]);
+      expect(result.nextCursor).toBeNull();
+      expect(prisma.invoice.findMany).toHaveBeenCalledTimes(1);
+    });
+
     it("forwards cursor + skip: 1 only when query.cursor is set", async () => {
       prisma.invoice.findMany.mockResolvedValue([]);
 
@@ -646,6 +662,18 @@ describe("InvoicesService", () => {
 
       const call = prisma.invoice.findMany.mock.calls[0][0];
       expect(call?.where).toMatchObject({ status: "paid" });
+    });
+
+    it("does not pass a status filter when query.status is omitted", async () => {
+      // Symmetric guard for the conditional spread `...(query.status ? { status } : {})`.
+      // Passing `status: undefined` would silently match nothing in Prisma; the key
+      // must be absent entirely. Locks the omission shape against a future refactor.
+      prisma.invoice.findMany.mockResolvedValue([]);
+
+      await service.listItems(userId, { limit: 20 });
+
+      const call = prisma.invoice.findMany.mock.calls[0][0];
+      expect(call?.where).toEqual(expect.not.objectContaining({ status: expect.anything() }));
     });
 
     it("forwards the clientId filter to the where clause", async () => {

@@ -55,7 +55,8 @@ export function InvoiceForm() {
             selectedFile={f.selectedFile}
             message={f.uploadPanelMessage}
             isParsing={f.isUploading}
-            onPickPress={f.onPickPress}
+            onPickDocument={f.onPickDocument}
+            onPickImage={f.onPickImage}
           />
         ) : null}
         {f.mode === "manual" ? <ManualPanelStub /> : null}

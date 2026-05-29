@@ -323,7 +323,9 @@ export class InvoicesService {
       // (`/invoice/null`) for legacy pre-TEA-37 rows; surfacing 500 is
       // preferable to handing the freelancer a broken share link.
       if (!row.stripeCheckoutUrl || !row.qrCodeDataUrl || !row.publicShareToken) {
-        throw new InternalServerErrorException("Sent invoice is missing Stripe/QR data");
+        throw new InternalServerErrorException(
+          "Sent invoice is missing Stripe/QR data or share token",
+        );
       }
       return {
         invoice: toInvoiceDto(row),
@@ -359,12 +361,12 @@ export class InvoicesService {
     });
     if (lock.count === 0) {
       const current = await this.findRawInvoice(userId, invoiceId);
-      if (
-        current.status === "sent" &&
-        current.stripeCheckoutUrl &&
-        current.qrCodeDataUrl &&
-        current.publicShareToken
-      ) {
+      if (current.status === "sent") {
+        if (!current.stripeCheckoutUrl || !current.qrCodeDataUrl || !current.publicShareToken) {
+          throw new InternalServerErrorException(
+            "Sent invoice is missing Stripe/QR data or share token",
+          );
+        }
         return {
           invoice: toInvoiceDto(current),
           checkoutUrl: this.buildPreviewUrl(current.publicShareToken),

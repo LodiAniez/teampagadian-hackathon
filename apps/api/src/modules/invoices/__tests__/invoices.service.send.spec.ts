@@ -376,9 +376,36 @@ describe("InvoicesService.send", () => {
       }),
     );
 
-    await expect(service.send(USER_ID, INVOICE_ID, SEND_BODY)).rejects.toThrow(
-      InternalServerErrorException,
+    const sendPromise = service.send(USER_ID, INVOICE_ID, SEND_BODY);
+    await expect(sendPromise).rejects.toBeInstanceOf(InternalServerErrorException);
+    await expect(sendPromise).rejects.toThrow(
+      "Sent invoice is missing Stripe/QR data or share token",
     );
     expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
+  });
+
+  // TEA-87 regression guard: lock-loser branch must distinguish data
+  // corruption (sent row with null share-flow fields) from race-conflict
+  // (winner mid-flight). Data corruption → 500, not a misleading 409.
+  it("throws InternalServerError when the lock-loser path finds a sent row with null share-flow fields", async () => {
+    const draftRow = buildInvoiceRow();
+    const corruptedSentRow = buildInvoiceRow({
+      status: "sent",
+      stripeCheckoutUrl: CHECKOUT_URL,
+      qrCodeDataUrl: QR_DATA_URL,
+      publicShareToken: null,
+    });
+    mockPrisma.invoice.findFirst
+      .mockResolvedValueOnce(draftRow)
+      .mockResolvedValueOnce(corruptedSentRow);
+    mockPrisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+
+    const sendPromise = service.send(USER_ID, INVOICE_ID, SEND_BODY);
+    await expect(sendPromise).rejects.toBeInstanceOf(InternalServerErrorException);
+    await expect(sendPromise).rejects.toThrow(
+      "Sent invoice is missing Stripe/QR data or share token",
+    );
+    expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
+    expect(mockPrisma.invoice.update).not.toHaveBeenCalled();
   });
 });

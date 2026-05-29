@@ -93,7 +93,10 @@ export function useSetupProfileForm() {
     await submitSetupProfile({
       values,
       save: (body) => update.save(body),
-      navigate: () => router.replace("/"),
+      // Setup-profile is the first onboarding step; second is adding a payout
+      // method. Route the user straight there instead of the dashboard so the
+      // gate sequence is uninterrupted (per TEA-25).
+      navigate: () => router.replace("/payout-method/setup"),
     });
     // The mutation's onSuccess (buildUpdateProfileSuccessHandler) owns the
     // draft clear + cache invalidation. Don't double-call here.

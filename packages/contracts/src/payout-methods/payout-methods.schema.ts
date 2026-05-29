@@ -52,6 +52,12 @@ export const PayoutMethodSchema = z.discriminatedUnion("type", [
 ]);
 export type PayoutMethod = z.infer<typeof PayoutMethodSchema>;
 
+export const SetupIntentResponseSchema = z.object({
+  setupIntentId: z.string().min(1),
+  clientSecret: z.string().min(1),
+});
+export type SetupIntentResponse = z.infer<typeof SetupIntentResponseSchema>;
+
 export const AddPayoutMethodBodySchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("card"),

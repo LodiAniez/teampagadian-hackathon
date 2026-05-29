@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { mockDeep, type DeepMockProxy } from "vitest-mock-extended";
-import { NotFoundException } from "@nestjs/common";
+import { InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { Prisma, PayoutMethodType } from "@prisma/client";
 import type { PayoutMethod as PayoutMethodRow } from "@prisma/client";
 import { PayoutMethodsService } from "../payout-methods.service";
@@ -37,6 +37,28 @@ describe("PayoutMethodsService", () => {
     prisma = mockDeep<PrismaService>();
     stripeService = mockDeep<StripeService>();
     service = new PayoutMethodsService(prisma, stripeService);
+  });
+
+  describe("createSetupIntent", () => {
+    it("delegates to StripeService.createSetupIntent and returns its result", async () => {
+      const expected = { setupIntentId: "seti_abc", clientSecret: "seti_abc_secret_xyz" };
+      stripeService.createSetupIntent.mockResolvedValue(expected);
+
+      const result = await service.createSetupIntent("user-id");
+
+      expect(stripeService.createSetupIntent).toHaveBeenCalledWith("user-id");
+      expect(result).toEqual(expected);
+    });
+
+    it("propagates Stripe failures (no swallowing)", async () => {
+      stripeService.createSetupIntent.mockRejectedValue(
+        new InternalServerErrorException("Stripe SetupIntent returned no client_secret"),
+      );
+
+      await expect(service.createSetupIntent("user-id")).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
   });
 
   describe("list", () => {

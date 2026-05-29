@@ -319,12 +319,15 @@ export class InvoicesService {
     const row = await this.findRawInvoice(userId, invoiceId);
 
     if (row.status === "sent") {
-      if (!row.stripeCheckoutUrl || !row.qrCodeDataUrl) {
+      // publicShareToken guard prevents returning a malformed preview URL
+      // (`/invoice/null`) for legacy pre-TEA-37 rows; surfacing 500 is
+      // preferable to handing the freelancer a broken share link.
+      if (!row.stripeCheckoutUrl || !row.qrCodeDataUrl || !row.publicShareToken) {
         throw new InternalServerErrorException("Sent invoice is missing Stripe/QR data");
       }
       return {
         invoice: toInvoiceDto(row),
-        checkoutUrl: row.stripeCheckoutUrl,
+        checkoutUrl: this.buildPreviewUrl(row.publicShareToken),
         qrCodeDataUrl: row.qrCodeDataUrl,
       };
     }
@@ -356,10 +359,15 @@ export class InvoicesService {
     });
     if (lock.count === 0) {
       const current = await this.findRawInvoice(userId, invoiceId);
-      if (current.status === "sent" && current.stripeCheckoutUrl && current.qrCodeDataUrl) {
+      if (
+        current.status === "sent" &&
+        current.stripeCheckoutUrl &&
+        current.qrCodeDataUrl &&
+        current.publicShareToken
+      ) {
         return {
           invoice: toInvoiceDto(current),
-          checkoutUrl: current.stripeCheckoutUrl,
+          checkoutUrl: this.buildPreviewUrl(current.publicShareToken),
           qrCodeDataUrl: current.qrCodeDataUrl,
         };
       }
@@ -377,11 +385,10 @@ export class InvoicesService {
 
       const publicShareToken = randomBytes(16).toString("base64url");
 
-      const appUrl = this.config.get("APP_URL", { infer: true });
       // The Raket-hosted preview page (TEA-44) is the client's entry point
       // per PRD §5. Email CTA, QR code, and API response all target this URL;
       // the preview page then forwards into Stripe Checkout (TEA-85).
-      previewUrl = `${appUrl}/invoice/${publicShareToken}`;
+      previewUrl = this.buildPreviewUrl(publicShareToken);
       // Singular `/invoice/[token]/paid` — must match the new public page route
       // and use the share token, not the internal invoice id (TEA-44).
       const successUrl = `${previewUrl}/paid`;
@@ -492,6 +499,11 @@ export class InvoicesService {
       throw new NotFoundException("Invoice not found");
     }
     return toPublicInvoiceDto(row);
+  }
+
+  private buildPreviewUrl(publicShareToken: string): string {
+    const appUrl = this.config.get("APP_URL", { infer: true });
+    return `${appUrl}/invoice/${publicShareToken}`;
   }
 
   private async findRawInvoice(

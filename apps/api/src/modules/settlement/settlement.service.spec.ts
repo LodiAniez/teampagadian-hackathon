@@ -266,6 +266,7 @@ describe("SettlementService.settle", () => {
       expect(h.publicClient.getLogs).not.toHaveBeenCalled();
       expect(h.walletClient.writeContract).toHaveBeenCalledOnce();
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Skipping balance precheck"));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("pi_test_123"));
     });
   });
 

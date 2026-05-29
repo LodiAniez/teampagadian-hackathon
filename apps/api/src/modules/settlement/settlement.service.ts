@@ -156,7 +156,7 @@ export class SettlementService {
 
     if (transitioned.morphRetryCount > 1 && transitioned.morphAnchorBlock === null) {
       this.logger.warn(
-        `Skipping balance precheck for payment ${payment.id} (retry #${transitioned.morphRetryCount}): morphAnchorBlock is null. Legacy row predates the precheck feature; proceeding to fresh on-chain submission.`,
+        `Skipping balance precheck for payment ${payment.id} (PI ${payment.stripePaymentIntentId}, retry #${transitioned.morphRetryCount}): morphAnchorBlock is null. Legacy row predates the precheck feature; proceeding to fresh on-chain submission.`,
       );
     }
 

@@ -123,8 +123,7 @@ describe("PayoutsService.disburseToFreelancer", () => {
       status: PayoutStatus.DELIVERED,
     });
     expect(createArg.data.completedAt).toBeInstanceOf(Date);
-    expect(typeof createArg.data.externalTxnId).toBe("string");
-    expect((createArg.data.externalTxnId as string).length).toBeGreaterThan(0);
+    expect(createArg.data.externalTxnId).toMatch(/.+/);
   });
 
   it.each<[PayoutMethodType, string]>([

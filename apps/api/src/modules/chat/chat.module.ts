@@ -1,13 +1,16 @@
 import { Module } from "@nestjs/common";
+import { CommonAuthModule } from "../../common/auth/auth.module";
 import { TaxModule } from "../tax/tax.module";
+import { ChatController } from "./chat.controller";
+import { ChatService } from "./chat.service";
 import { ChatToolsService } from "./chat-tools.service";
 
-// The Gemini tool-use loop + streaming endpoint (TEA-55) will live here too and
-// consume ChatToolsService via buildChatToolDefs. For now this slice owns the
-// four data tools behind "Ask your books."
+// "Ask your books": the four data tools (ChatToolsService) plus the streaming
+// Gemini tool-use endpoint (ChatController → ChatService) that exposes them.
 @Module({
-  imports: [TaxModule],
-  providers: [ChatToolsService],
+  imports: [TaxModule, CommonAuthModule],
+  controllers: [ChatController],
+  providers: [ChatToolsService, ChatService],
   exports: [ChatToolsService],
 })
 export class ChatModule {}

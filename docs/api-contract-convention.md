@@ -27,7 +27,22 @@ packages/
         ...
     package.json                # name: "@raket/contracts"
     tsconfig.json
+  types/
+    src/
+      index.ts                  # re-exports all types
+      dashboard.ts              # shared aggregate/display types
+    package.json                # name: "@raket/types"
+    tsconfig.json
 ```
+
+**Two shared packages, two different jobs:**
+
+| Package            | Contents                                               | Runtime?                                   |
+| ------------------ | ------------------------------------------------------ | ------------------------------------------ |
+| `@raket/contracts` | Zod schemas + ts-rest routers                          | Yes — request validation, response parsing |
+| `@raket/types`     | Plain TypeScript interfaces for aggregate/display data | No — type-only, no Zod dependency          |
+
+Use `@raket/types` for shapes that are assembled by the API from multiple sources (dashboard aggregates, list projections) and do not need runtime schema validation at the wire boundary. Use `@raket/contracts` for everything that travels directly as a request or response body.
 
 - **One folder per feature**, matching the backend slice and frontend feature name.
 - **`*.schema.ts`** — Zod schemas + inferred TS types (the data shapes).
@@ -44,13 +59,7 @@ Schemas are written once, used everywhere: request validation, response typing, 
 // packages/contracts/src/invoices/invoices.schema.ts
 import { z } from "zod";
 
-export const InvoiceStatusSchema = z.enum([
-  "draft",
-  "sent",
-  "paid",
-  "overdue",
-  "void",
-]);
+export const InvoiceStatusSchema = z.enum(["draft", "sent", "paid", "overdue", "void"]);
 export type InvoiceStatus = z.infer<typeof InvoiceStatusSchema>;
 
 export const InvoiceLineItemSchema = z.object({
@@ -68,8 +77,8 @@ export const InvoiceSchema = z.object({
   clientId: z.string().uuid(),
   status: InvoiceStatusSchema,
   amount: z.number().nonnegative(),
-  currency: z.string().length(3),       // ISO-4217
-  issueDate: z.string().date(),         // YYYY-MM-DD
+  currency: z.string().length(3), // ISO-4217
+  issueDate: z.string().date(), // YYYY-MM-DD
   dueDate: z.string().date(),
   lineItems: z.array(InvoiceLineItemSchema),
   createdAt: z.string().datetime(),
@@ -109,11 +118,7 @@ Always derive from the canonical schema. If you find yourself manually re-typing
 // packages/contracts/src/invoices/invoices.contract.ts
 import { initContract } from "@ts-rest/core";
 import { z } from "zod";
-import {
-  InvoiceSchema,
-  CreateInvoiceBodySchema,
-  InvoiceStatusSchema,
-} from "./invoices.schema";
+import { InvoiceSchema, CreateInvoiceBodySchema, InvoiceStatusSchema } from "./invoices.schema";
 import { PaginationQuerySchema, PaginatedResponseSchema } from "../shared/pagination";
 import { ErrorResponseSchema } from "../shared/error";
 
@@ -196,13 +201,13 @@ Rules:
 
 ### HTTP verb conventions
 
-| Verb     | Use for                                         | Returns           |
-| -------- | ----------------------------------------------- | ----------------- |
-| `GET`    | Read, list, search (no side effects)            | 200               |
+| Verb     | Use for                                            | Returns                     |
+| -------- | -------------------------------------------------- | --------------------------- |
+| `GET`    | Read, list, search (no side effects)               | 200                         |
 | `POST`   | Create, command, action (`/:id/send`, `/:id/void`) | 201 (create) / 200 (action) |
-| `PATCH`  | Partial update                                  | 200               |
-| `PUT`    | Replace (rare — prefer PATCH)                   | 200               |
-| `DELETE` | Soft-delete or hard-delete                      | 204               |
+| `PATCH`  | Partial update                                     | 200                         |
+| `PUT`    | Replace (rare — prefer PATCH)                      | 200                         |
+| `DELETE` | Soft-delete or hard-delete                         | 204                         |
 
 For non-CRUD actions, use sub-resources: `POST /invoices/:id/send`, `POST /invoices/:id/void`. Don't smuggle actions into PATCH bodies.
 
@@ -286,7 +291,9 @@ const authedHeaders = z.object({
 });
 
 export const invoicesContract = c.router(
-  { /* ... */ },
+  {
+    /* ... */
+  },
   {
     pathPrefix: "/invoices",
     baseHeaders: authedHeaders,
@@ -325,7 +332,9 @@ import { initQueryClient } from "@ts-rest/react-query";
 
 export const api = initQueryClient(contract, {
   baseUrl: process.env.NEXT_PUBLIC_API_URL!,
-  baseHeaders: { /* auth header injected via interceptor */ },
+  baseHeaders: {
+    /* auth header injected via interceptor */
+  },
 });
 ```
 

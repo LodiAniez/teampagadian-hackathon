@@ -1,4 +1,4 @@
-import { forwardRef, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { FxModule } from "../integrations/fx/fx.module";
 import { StripeModule } from "../integrations/stripe/stripe.module";
 import { PayoutsModule } from "../payouts/payouts.module";
@@ -7,7 +7,7 @@ import { PaymentIntentPoller } from "./payment-intent-poller";
 import { PaymentsService } from "./payments.service";
 
 @Module({
-  imports: [FxModule, SettlementModule, PayoutsModule, forwardRef(() => StripeModule)],
+  imports: [FxModule, SettlementModule, PayoutsModule, StripeModule],
   providers: [PaymentsService, PaymentIntentPoller],
   exports: [PaymentsService],
 })

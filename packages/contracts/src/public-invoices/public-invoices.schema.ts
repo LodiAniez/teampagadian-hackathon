@@ -29,7 +29,9 @@ export const PublicInvoiceResponseSchema = z.object({
   }),
   lineItems: z.array(PublicInvoiceLineItemSchema),
   stripeCheckoutUrl: z.string().url().nullable(),
-  qrCodeDataUrl: z.string().nullable(),
+  // Mirrors SendInvoiceResponseSchema.qrCodeDataUrl — keep the two constraints
+  // in lockstep so a non-data-URL can't sneak through the public surface.
+  qrCodeDataUrl: z.string().startsWith("data:image/").nullable(),
   token: z.string(),
 });
 export type PublicInvoiceResponse = z.infer<typeof PublicInvoiceResponseSchema>;

@@ -614,6 +614,14 @@ describe("InvoicesService", () => {
       await expect(service.getByPublicToken(SHARE_TOKEN)).rejects.toThrow(NotFoundException);
     });
 
+    it("throws NotFoundException when the invoice is overdue", async () => {
+      // regression guard: a future "positive include" guard (e.g. status !== "draft")
+      // would silently expose overdue invoices through the public link.
+      prisma.invoice.findUnique.mockResolvedValue(mockPublicRow({ status: "overdue" }));
+
+      await expect(service.getByPublicToken(SHARE_TOKEN)).rejects.toThrow(NotFoundException);
+    });
+
     it("does not expose internal/PII fields in the returned DTO", async () => {
       prisma.invoice.findUnique.mockResolvedValue(mockPublicRow());
 
@@ -634,6 +642,9 @@ describe("InvoicesService", () => {
       // The trimmed client/freelancer projections also must not leak contact details.
       expect(Object.keys(dto.client)).toEqual(["name"]);
       expect(Object.keys(dto.freelancer).sort()).toEqual(["businessName", "name"]);
+      // Explicit leak-prevention regression: `phone` is on the User row but
+      // must never reach the public DTO.
+      expect(dto.freelancer).not.toHaveProperty("phone");
     });
   });
 });

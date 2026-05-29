@@ -114,12 +114,14 @@ export function InvoicePreview({ invoice }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowQr((v) => !v)}
+                  aria-expanded={showQr}
+                  aria-controls="payment-qr-panel"
                   className="text-sm font-medium text-brand-700 hover:underline"
                 >
                   {showQr ? "Hide QR code" : "Pay with QR code"}
                 </button>
                 {showQr && (
-                  <div className="mt-4 flex justify-center">
+                  <div id="payment-qr-panel" className="mt-4 flex justify-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={invoice.qrCodeDataUrl}

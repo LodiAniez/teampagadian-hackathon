@@ -14,6 +14,9 @@ async function fetchPublicInvoice(token: string): Promise<PublicInvoiceResponse 
     if (res.status !== 200) return null;
     return res.body;
   } catch {
+    // Intentional simplification for hackathon: any throw (404, 5xx, network)
+    // is surfaced as not-found. A production version should distinguish 404
+    // from upstream failures and render a retry-friendly state instead.
     return null;
   }
 }

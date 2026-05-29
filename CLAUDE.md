@@ -1,6 +1,6 @@
 # Raket — Project Context for Claude
 
-Cross-border payment platform for Filipino freelancers. Turborepo monorepo: Next.js 15 (web) + NestJS (api) + Prisma + Supabase Postgres, with `@raket/contracts` (ts-rest + Zod) as the shared wire layer.
+Cross-border payment platform for Filipino freelancers. Turborepo monorepo: Expo (mobile, primary frontend) + Next.js 15 (web, public invoice page only) + NestJS (api) + Prisma + Supabase Postgres, with `@raket/contracts` (ts-rest + Zod) as the shared wire layer.
 
 Read the PRD for product context: [`docs/prd.md`](docs/prd.md).
 

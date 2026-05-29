@@ -1,5 +1,6 @@
 import { initContract } from "@ts-rest/core";
 import { authContract } from "./auth/auth.contract";
+import { dashboardContract } from "./dashboard/dashboard.contract";
 import { invoicesContract } from "./invoices/invoices.contract";
 import { payoutMethodsContract } from "./payout-methods/payout-methods.contract";
 import { publicInvoicesContract } from "./public-invoices/public-invoices.contract";
@@ -12,6 +13,7 @@ export const contract = c.router(
     invoices: invoicesContract,
     payoutMethods: payoutMethodsContract,
     publicInvoices: publicInvoicesContract,
+    dashboard: dashboardContract,
   },
   { pathPrefix: "/api/v1" },
 );
@@ -23,6 +25,7 @@ export * from "./shared/pagination";
 export * from "./shared/money";
 export * from "./auth/auth.schema";
 export * from "./clients/clients.schema";
+export * from "./dashboard/dashboard.schema";
 export * from "./invoices/invoices.schema";
 export * from "./payout-methods/payout-methods.schema";
 export * from "./public-invoices/public-invoices.schema";

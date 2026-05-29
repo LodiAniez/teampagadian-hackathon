@@ -32,15 +32,30 @@ export async function authHeader(): Promise<{ authorization: string }> {
 
 type SessionState = { session: Session | null; isLoading: boolean };
 
+// Wraps supabase.auth.getSession() with a catch that treats rejection as
+// "no session" so a failed lookup (network down, SecureStore wiped after an
+// emulator reset, etc.) falls through to the login screen instead of leaving
+// useSession stuck on isLoading=true forever. Exported so the rejection path
+// is unit-testable in the node vitest env (the hook itself needs a renderer).
+export async function resolveInitialSession(): Promise<{ session: Session | null }> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return { session: data.session };
+  } catch (err) {
+    console.warn("[auth] getSession failed:", err);
+    return { session: null };
+  }
+}
+
 export function useSession(): SessionState {
   const [state, setState] = useState<SessionState>({ session: null, isLoading: true });
 
   useEffect(() => {
     let active = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    resolveInitialSession().then(({ session }) => {
       if (!active) return;
-      setState({ session: data.session, isLoading: false });
+      setState({ session, isLoading: false });
     });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {

@@ -1,7 +1,11 @@
 import { initContract } from "@ts-rest/core";
 import { z } from "zod";
 import { ErrorResponseSchema } from "../shared/error";
-import { AddPayoutMethodBodySchema, PayoutMethodSchema } from "./payout-methods.schema";
+import {
+  AddPayoutMethodBodySchema,
+  PayoutMethodSchema,
+  SetupIntentResponseSchema,
+} from "./payout-methods.schema";
 
 const c = initContract();
 
@@ -30,6 +34,18 @@ export const payoutMethodsContract = c.router(
         422: ErrorResponseSchema,
       },
       summary: "Add a new payout method (freshness-gated)",
+    },
+    setupIntent: {
+      method: "POST",
+      path: "/setup-intent",
+      body: c.noBody(),
+      responses: {
+        200: SetupIntentResponseSchema,
+        401: ErrorResponseSchema,
+        500: ErrorResponseSchema,
+      },
+      summary:
+        "Create a Stripe SetupIntent for card tokenization (no freshness gate — fresh OTP gated at /add)",
     },
     setDefault: {
       method: "PATCH",

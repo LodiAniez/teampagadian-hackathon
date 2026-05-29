@@ -17,6 +17,9 @@ export default function SettingsScreen() {
       <Stack.Screen options={{ title: "Settings" }} />
       <View className="gap-6">
         <Text className="text-2xl font-bold text-gray-900">Settings</Text>
+        <Button variant="outline" onPress={() => router.push("/payout-method/setup")} fullWidth>
+          Payout method
+        </Button>
         <Button variant="destructive" onPress={handleSignOut} fullWidth>
           Sign out
         </Button>

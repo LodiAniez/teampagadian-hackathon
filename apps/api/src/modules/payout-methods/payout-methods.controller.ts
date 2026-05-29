@@ -29,6 +29,20 @@ export class PayoutMethodsController {
     });
   }
 
+  // AuthGuard (not FreshAuthGuard) — the SetupIntent itself is harmless
+  // (server-side Stripe object creation). FreshAuthGuard sits on POST /
+  // (the add call), which is where the new payout method actually lands
+  // in the DB. Gating setup-intent too would force the user to re-OTP
+  // before the PaymentSheet even opens, which is the wrong UX.
+  @UseGuards(AuthGuard)
+  @TsRestHandler(contract.payoutMethods.setupIntent)
+  setupIntent(@CurrentUser() user: AuthUser) {
+    return tsRestHandler(contract.payoutMethods.setupIntent, async () => {
+      const result = await this.payoutMethods.createSetupIntent(user.id);
+      return { status: 200, body: result };
+    });
+  }
+
   @UseGuards(FreshAuthGuard)
   @TsRestHandler(contract.payoutMethods.setDefault)
   setDefault(@CurrentUser() user: AuthUser) {

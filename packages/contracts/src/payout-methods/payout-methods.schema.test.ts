@@ -8,6 +8,7 @@ import {
   MayaDetailsSchema,
   PayoutMethodSchema,
   PayoutMethodTypeSchema,
+  SetupIntentResponseSchema,
   type AddPayoutMethodBody,
   type PayoutMethod,
 } from "./payout-methods.schema";
@@ -224,6 +225,29 @@ describe("PayoutMethodSchema (discriminated union)", () => {
       expectTypeOf(method.details.accountNumberLast4).toEqualTypeOf<string>();
       expectTypeOf(method.details.accountName).toEqualTypeOf<string>();
     }
+  });
+});
+
+describe("SetupIntentResponseSchema", () => {
+  it("accepts a populated setupIntentId + clientSecret pair", () => {
+    expect(() =>
+      SetupIntentResponseSchema.parse({
+        setupIntentId: "seti_1A2b3C4d",
+        clientSecret: "seti_1A2b3C4d_secret_xyz",
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects an empty setupIntentId", () => {
+    expect(() =>
+      SetupIntentResponseSchema.parse({ setupIntentId: "", clientSecret: "secret" }),
+    ).toThrow();
+  });
+
+  it("rejects an empty clientSecret", () => {
+    expect(() =>
+      SetupIntentResponseSchema.parse({ setupIntentId: "seti_1", clientSecret: "" }),
+    ).toThrow();
   });
 });
 

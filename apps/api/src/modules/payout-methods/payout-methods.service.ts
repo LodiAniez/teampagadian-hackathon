@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PayoutMethod as PayoutMethodRow } from "@prisma/client";
-import type { AddPayoutMethodBody, PayoutMethod, PayoutMethodType } from "@raket/contracts";
+import type {
+  AddPayoutMethodBody,
+  PayoutMethod,
+  PayoutMethodType,
+  SetupIntentResponse,
+} from "@raket/contracts";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { StripeService } from "../integrations/stripe/stripe.service";
 import { toPayoutMethodDto, CONTRACT_TO_PRISMA_TYPE } from "./payout-methods.mapper";
@@ -11,6 +16,10 @@ export class PayoutMethodsService {
     private readonly prisma: PrismaService,
     private readonly stripeService: StripeService,
   ) {}
+
+  async createSetupIntent(userId: string): Promise<SetupIntentResponse> {
+    return this.stripeService.createSetupIntent(userId);
+  }
 
   async list(userId: string): Promise<PayoutMethod[]> {
     const rows = await this.prisma.payoutMethod.findMany({

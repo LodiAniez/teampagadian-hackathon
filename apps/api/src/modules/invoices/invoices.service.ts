@@ -370,6 +370,7 @@ export class InvoicesService {
     let qrCodeDataUrl: string;
     let updated: InvoiceRowWithClientAndLineItems;
     let freelancer: Awaited<ReturnType<typeof this.prisma.user.findUnique>>;
+    let previewUrl: string;
     try {
       freelancer = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!freelancer) throw new NotFoundException("User not found");
@@ -377,9 +378,13 @@ export class InvoicesService {
       const publicShareToken = randomBytes(16).toString("base64url");
 
       const appUrl = this.config.get("APP_URL", { infer: true });
+      // The Raket-hosted preview page (TEA-44) is the client's entry point
+      // per PRD §5. Email CTA, QR code, and API response all target this URL;
+      // the preview page then forwards into Stripe Checkout (TEA-85).
+      previewUrl = `${appUrl}/invoice/${publicShareToken}`;
       // Singular `/invoice/[token]/paid` — must match the new public page route
       // and use the share token, not the internal invoice id (TEA-44).
-      const successUrl = `${appUrl}/invoice/${publicShareToken}/paid`;
+      const successUrl = `${previewUrl}/paid`;
 
       session = await this.stripeService.createInvoiceCheckoutSession(
         { id: row.id, number: row.number, amount: Number(row.amount), currency: row.currency },
@@ -387,7 +392,9 @@ export class InvoicesService {
         successUrl,
       );
 
-      qrCodeDataUrl = await this.qrService.toDataUrl(session.url);
+      // QR encodes the Raket preview URL so the client lands on our branded
+      // page before being forwarded to Stripe Checkout (TEA-85, PRD §5).
+      qrCodeDataUrl = await this.qrService.toDataUrl(previewUrl);
 
       updated = await this.prisma.invoice.update({
         where: { id: invoiceId },
@@ -395,6 +402,9 @@ export class InvoicesService {
           status: "sent",
           publicShareToken,
           stripeCheckoutSessionId: session.id,
+          // stripeCheckoutUrl stores the Stripe URL — the preview page reads
+          // it to render the "Pay" anchor. Do NOT change this to previewUrl;
+          // only the user-facing entry points (email/QR/API response) flip.
           stripeCheckoutUrl: session.url,
           qrCodeDataUrl,
         },
@@ -437,7 +447,7 @@ export class InvoicesService {
           name: freelancer.name ?? "",
           businessName: freelancer.businessName ?? undefined,
         },
-        paymentUrl: session.url,
+        paymentUrl: previewUrl,
         qrCodeDataUrl,
         recipientEmail: body.clientEmail,
       });
@@ -447,9 +457,13 @@ export class InvoicesService {
       );
     }
 
+    // `checkoutUrl` is the freelancer's shareable link, which now routes
+    // through the Raket preview page (TEA-85, PRD §5). Field name predates
+    // the rename from `/pay/[invoiceId]` to `/invoice/[token]`; renaming the
+    // contract field is deferred to a future bump.
     return {
       invoice: toInvoiceDto(updated),
-      checkoutUrl: session.url,
+      checkoutUrl: previewUrl,
       qrCodeDataUrl,
     };
   }

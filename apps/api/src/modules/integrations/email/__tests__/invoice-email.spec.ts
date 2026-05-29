@@ -24,16 +24,16 @@ function buildParams(overrides: Partial<RenderInvoiceEmailParams> = {}): RenderI
       businessName: "Juan's Studio",
       contactEmail: "juan@juanstudio.com",
     },
-    paymentUrl: "https://checkout.stripe.com/c/pay/cs_test_abc123",
+    paymentUrl: "https://app.test/invoice/abc123",
     ...overrides,
   };
 }
 
 describe("renderInvoiceEmail", () => {
-  it("includes a Pay Now link pointing at the Stripe Checkout URL", () => {
+  it("includes a Pay Now link pointing at the payment URL", () => {
     const html = renderInvoiceEmail(buildParams());
 
-    expect(html).toMatch(/<a[^>]*href="https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_abc123"/);
+    expect(html).toMatch(/<a[^>]*href="https:\/\/app\.test\/invoice\/abc123"/);
   });
 
   it("references the QR via cid: so it can be attached inline (Gmail strips data: URIs)", () => {
@@ -46,7 +46,7 @@ describe("renderInvoiceEmail", () => {
     const html = renderInvoiceEmail(buildParams());
 
     // URL should appear at least twice — once as the button href and once as plain text
-    const occurrences = html.split("https://checkout.stripe.com/c/pay/cs_test_abc123").length - 1;
+    const occurrences = html.split("https://app.test/invoice/abc123").length - 1;
     expect(occurrences).toBeGreaterThanOrEqual(2);
   });
 
@@ -126,7 +126,7 @@ describe("renderInvoiceEmailText", () => {
   it("includes the payment URL in plain text", () => {
     const text = renderInvoiceEmailText(buildParams());
 
-    expect(text).toContain("https://checkout.stripe.com/c/pay/cs_test_abc123");
+    expect(text).toContain("https://app.test/invoice/abc123");
   });
 
   it("includes the invoice number and total", () => {

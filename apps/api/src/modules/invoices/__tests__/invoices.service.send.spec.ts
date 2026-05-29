@@ -405,6 +405,22 @@ describe("InvoicesService.send", () => {
     await expect(sendPromise).rejects.toThrow(
       "Sent invoice is missing Stripe/QR data or share token",
     );
+    // Positive lock-acquire assertion: this branch is reached only after the
+    // single lock-acquire updateMany returns count=0. Pins the shape so a
+    // future refactor that changes the lock predicate can't silently bypass
+    // this test by skipping the acquire entirely.
+    expect(mockPrisma.invoice.updateMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.invoice.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: INVOICE_ID,
+          userId: USER_ID,
+          status: "draft",
+          OR: [{ sentAt: null }, { sentAt: { lt: expect.any(Date) } }],
+        }),
+        data: { sentAt: expect.any(Date) },
+      }),
+    );
     expect(mockStripe.createInvoiceCheckoutSession).not.toHaveBeenCalled();
     expect(mockPrisma.invoice.update).not.toHaveBeenCalled();
   });

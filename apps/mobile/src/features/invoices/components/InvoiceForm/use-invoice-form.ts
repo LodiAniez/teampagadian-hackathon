@@ -2,28 +2,39 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as DocumentPicker from "expo-document-picker";
 import {
   CreateInvoiceBodySchema,
+  QUOTATION_MIME_TYPES,
   type CreateInvoiceBody,
   type ParsedInvoiceDraft,
 } from "@raket/contracts";
 import { useParseInvoiceText } from "../../hooks/use-parse-invoice-text";
+import { useParseQuotation } from "../../hooks/use-parse-quotation";
 import { useCreateInvoice } from "../../hooks/use-create-invoice";
-import type { InvoiceMode } from "../../types";
+import type { InvoiceMode, UploadPanelMessage, UploadSelectedFile } from "../../types";
 import {
   emptyFormValues,
   mapDraftToFormValues,
   type InvoiceFormValues,
 } from "../../utils/form-values";
+import {
+  messageForUploadError,
+  validatePickedAsset,
+  type PickedAsset,
+} from "../../utils/upload-validation";
 
 export function useInvoiceForm() {
   const router = useRouter();
   const parse = useParseInvoiceText();
+  const parseQuotation = useParseQuotation();
   const create = useCreateInvoice();
 
   const [mode, setMode] = useState<InvoiceMode>("text");
   const [draftText, setDraftText] = useState("");
   const [hasDraft, setHasDraft] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<UploadSelectedFile | null>(null);
+  const [uploadPanelMessage, setUploadPanelMessage] = useState<UploadPanelMessage>(null);
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(CreateInvoiceBodySchema),
@@ -49,6 +60,46 @@ export function useInvoiceForm() {
     } catch {
       // mutateAsync rejects on 4xx/5xx; surface via parse.error instead of bubbling.
     }
+  }
+
+  async function onPickFile(asset: PickedAsset) {
+    const validation = validatePickedAsset(asset);
+    if (!validation.ok) {
+      setSelectedFile(null);
+      setUploadPanelMessage({ kind: "pickError", text: validation.error });
+      return;
+    }
+    setSelectedFile(validation.file);
+    setUploadPanelMessage(null);
+
+    try {
+      const draft = await parseQuotation.upload({ file: validation.file });
+      if (draft.lineItems.length === 0) {
+        // Server saw the file but extracted no work rows — keep the picked
+        // file visible so the user can replace it, don't bounce them into an
+        // empty review form.
+        setUploadPanelMessage({
+          kind: "emptyDraft",
+          text: "Couldn't extract invoice data — try a different file, or switch to manual entry",
+        });
+        return;
+      }
+      applyDraft(draft, "upload");
+    } catch (err) {
+      setUploadPanelMessage({ kind: "serverError", text: messageForUploadError(err) });
+    }
+  }
+
+  async function onPickPress() {
+    const result = await DocumentPicker.getDocumentAsync({
+      // Picker filter — Android treats this as a hint, so the server + client
+      // also re-validate. iOS honours it strictly.
+      type: [...QUOTATION_MIME_TYPES],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    await onPickFile(result.assets[0]);
   }
 
   function onModeChange(next: InvoiceMode) {
@@ -112,5 +163,10 @@ export function useInvoiceForm() {
     onContinueToSend,
     isSubmitting: create.isSaving,
     submitError: create.error,
+    // Upload mode
+    selectedFile,
+    uploadPanelMessage,
+    isUploading: parseQuotation.isParsing,
+    onPickPress,
   };
 }

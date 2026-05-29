@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
-import { formatMoney } from "@/lib/format";
+import { formatBytes, formatMoney } from "@/lib/format";
 import { parseNumber } from "@/lib/parse-number";
 import type { CreateInvoiceLineItem } from "@raket/contracts";
 import {
@@ -14,6 +14,7 @@ import {
   computeLineTotal,
   type InvoiceFormValues,
 } from "../../utils/form-values";
+import type { UploadPanelMessage, UploadSelectedFile } from "../../types";
 import type { ReviewEditCardRow } from "./use-review-edit-card";
 
 export function SectionLabel({ children }: { children: string }) {
@@ -69,17 +70,75 @@ export function TextPanel({ value, onChange, onGenerate, isParsing, error }: Tex
   );
 }
 
-export function UploadPanelStub() {
+type UploadPanelProps = {
+  selectedFile: UploadSelectedFile | null;
+  message: UploadPanelMessage;
+  isParsing: boolean;
+  onPickPress: () => void;
+};
+
+export function UploadPanel({ selectedFile, message, isParsing, onPickPress }: UploadPanelProps) {
   return (
-    <View className="items-center rounded-xl border-2 border-dashed border-gray-300 bg-white px-4 py-8">
-      <Text className="text-3xl">⬆</Text>
-      <Text className="mt-2 text-sm font-semibold text-gray-700">Tap to upload a quote</Text>
-      <Text className="mt-1 text-xs text-gray-500">PDF, PNG, JPG · we'll read the line items</Text>
-      <View className="mt-3 rounded-full bg-amber-100 px-3 py-1">
-        <Text className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
-          Coming soon
-        </Text>
+    <View className="gap-2">
+      {selectedFile ? (
+        <View className="flex-row items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
+          <Text className="text-2xl">📄</Text>
+          <View className="flex-1">
+            <Text className="text-sm font-semibold text-gray-800" numberOfLines={1}>
+              {selectedFile.name}
+            </Text>
+            <Text className="text-xs text-gray-500">{formatBytes(selectedFile.size)}</Text>
+          </View>
+          <Pressable
+            onPress={onPickPress}
+            disabled={isParsing}
+            accessibilityRole="button"
+            accessibilityLabel="Replace file"
+            className="rounded-full bg-gray-100 px-3 py-1.5"
+          >
+            <Text className="text-xs font-semibold text-gray-700">Replace</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          onPress={onPickPress}
+          disabled={isParsing}
+          accessibilityRole="button"
+          accessibilityLabel="Tap to upload a quote"
+          className="items-center rounded-xl border-2 border-dashed border-gray-300 bg-white px-4 py-8"
+        >
+          <Text className="text-3xl">⬆</Text>
+          <Text className="mt-2 text-sm font-semibold text-gray-700">Tap to upload a quote</Text>
+          <Text className="mt-1 text-xs text-gray-500">
+            PDF, PNG, JPG · we'll read the line items
+          </Text>
+        </Pressable>
+      )}
+
+      <Text className="text-xs text-gray-500">
+        Gemini reads your quote and pulls client, line items, amounts, and dates. You review before
+        sending.
+      </Text>
+
+      <UploadPanelMessageView message={message} />
+    </View>
+  );
+}
+
+function UploadPanelMessageView({ message }: { message: UploadPanelMessage }) {
+  if (!message) return null;
+  if (message.kind === "emptyDraft") {
+    return (
+      <View className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+        <Text className="text-xs text-amber-900">{message.text}</Text>
       </View>
+    );
+  }
+  // pickError and serverError share the same red treatment — both are
+  // "this attempt didn't work" from the user's perspective.
+  return (
+    <View className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+      <Text className="text-xs text-red-700">{message.text}</Text>
     </View>
   );
 }
@@ -373,11 +432,11 @@ export function SubmitErrorBanner({ error }: { error: { message?: string } | nul
   );
 }
 
-export function ParseLoadingState() {
+export function ParseLoadingState({ text }: { text: string }) {
   return (
     <View className="flex-row items-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-3 py-3">
       <ActivityIndicator color="#0d9488" />
-      <Text className="text-sm text-brand-700">Gemini is reading your description…</Text>
+      <Text className="text-sm text-brand-700">{text}</Text>
     </View>
   );
 }

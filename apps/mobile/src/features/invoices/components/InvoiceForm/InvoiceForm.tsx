@@ -12,7 +12,7 @@ import {
   StickyActions,
   SubmitErrorBanner,
   TextPanel,
-  UploadPanelStub,
+  UploadPanel,
   WarningsChips,
 } from "./InvoiceForm.parts";
 
@@ -31,6 +31,9 @@ export function InvoiceForm() {
     onRemove: f.removeLineItem,
   });
 
+  const loadingText =
+    f.mode === "upload" ? "Gemini is reading your quote…" : "Gemini is reading your description…";
+
   return (
     <View className="flex-1">
       <View className="gap-3 px-4 pt-2">
@@ -47,10 +50,19 @@ export function InvoiceForm() {
             error={f.parseError}
           />
         ) : null}
-        {f.mode === "upload" ? <UploadPanelStub /> : null}
+        {f.mode === "upload" ? (
+          <UploadPanel
+            selectedFile={f.selectedFile}
+            message={f.uploadPanelMessage}
+            isParsing={f.isUploading}
+            onPickPress={f.onPickPress}
+          />
+        ) : null}
         {f.mode === "manual" ? <ManualPanelStub /> : null}
 
-        {f.isParsing ? <ParseLoadingState /> : null}
+        {(f.mode === "text" && f.isParsing) || (f.mode === "upload" && f.isUploading) ? (
+          <ParseLoadingState text={loadingText} />
+        ) : null}
 
         <WarningsChips warnings={f.warnings} />
 

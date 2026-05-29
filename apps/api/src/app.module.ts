@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { ScheduleModule } from "@nestjs/schedule";
 import { AppConfigModule } from "./common/config/config.module";
 import { CommonAuthModule } from "./common/auth/auth.module";
 import { HealthModule } from "./common/health/health.module";
@@ -8,7 +9,7 @@ import { EmailModule } from "./modules/integrations/email/email.module";
 import { FxModule } from "./modules/integrations/fx/fx.module";
 import { GeminiModule } from "./modules/integrations/gemini/gemini.module";
 import { QrModule } from "./modules/integrations/qr/qr.module";
-import { StripeModule } from "./modules/integrations/stripe/stripe.module";
+import { StripeWebhookModule } from "./modules/integrations/stripe/stripe-webhook.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { PayoutMethodsModule } from "./modules/payout-methods/payout-methods.module";
@@ -18,12 +19,13 @@ import { SettlementModule } from "./modules/settlement/settlement.module";
   imports: [
     AppConfigModule,
     PrismaModule,
+    ScheduleModule.forRoot(),
     CommonAuthModule,
     HealthModule,
     GeminiModule,
     AuthModule,
     FxModule,
-    StripeModule,
+    StripeWebhookModule,
     QrModule,
     EmailModule,
     PaymentsModule,

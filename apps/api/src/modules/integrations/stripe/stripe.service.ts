@@ -9,6 +9,8 @@ import {
 import { ConfigService } from "@nestjs/config";
 import type { CardDetails } from "@raket/contracts";
 import type { EnvConfig } from "@/common/config/env.schema";
+import type { PaymentSucceededEvent } from "../../payments/payments.types";
+import { toPaymentSucceededEvent } from "./stripe-event-mappers";
 import {
   STRIPE_CLIENT,
   type CheckoutSessionResult,
@@ -137,5 +139,30 @@ export class StripeService {
       );
     }
     return this.stripe.webhooks.constructEvent(rawBody, signature, secret);
+  }
+
+  /**
+   * Retrieves a PaymentIntent and, if its status is `succeeded`, returns the
+   * domain `PaymentSucceededEvent` the payments slice consumes. Returns null
+   * for any non-succeeded status so callers can no-op without branching on
+   * Stripe-specific values.
+   *
+   * Stripe SDK types do not cross this slice boundary — the same Zod mapper
+   * the webhook controller uses (`toPaymentSucceededEvent`) parses `data.object`
+   * here, keeping the trust boundary discipline (docs/api-convention.md §8).
+   *
+   * Consumed by: PaymentIntentPoller (TEA-77) as a webhook fallback.
+   */
+  async tryGetPaymentSucceededEvent(piId: string): Promise<PaymentSucceededEvent | null> {
+    const pi = await this.stripe.paymentIntents.retrieve(piId);
+    if (pi.status !== "succeeded") return null;
+    // Stripe's PaymentIntent.latest_charge is `string | Charge | null`; without
+    // `expand` we always get the string form, but normalize defensively so an
+    // accidental expand later can't slip an object past the Zod mapper.
+    const latestCharge =
+      pi.latest_charge && typeof pi.latest_charge === "object"
+        ? pi.latest_charge.id
+        : pi.latest_charge;
+    return toPaymentSucceededEvent({ ...pi, latest_charge: latestCharge });
   }
 }

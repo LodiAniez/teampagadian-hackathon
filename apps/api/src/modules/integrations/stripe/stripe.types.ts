@@ -38,6 +38,17 @@ export interface StripeClient {
       ): Promise<{ id: string; url: string | null }>;
     };
   };
+  paymentIntents: {
+    retrieve(id: string): Promise<{
+      id: string;
+      status: string;
+      amount_received: number;
+      currency: string;
+      latest_charge: string | { id: string } | null;
+      created: number;
+      metadata: { [key: string]: string };
+    }>;
+  };
   webhooks: {
     constructEvent(payload: string | Buffer, header: string, secret: string): WebhookEvent;
   };

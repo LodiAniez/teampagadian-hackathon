@@ -82,6 +82,7 @@ describe("TaxController", () => {
       .set("Authorization", "Bearer test-token");
 
     expect(res.status).toBe(422);
+    expect(res.body.code).toBe("VALIDATION_FAILED");
     expect(computeAnnual).not.toHaveBeenCalled();
   });
 

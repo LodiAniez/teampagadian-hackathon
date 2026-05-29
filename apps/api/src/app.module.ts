@@ -5,6 +5,7 @@ import { CommonAuthModule } from "./common/auth/auth.module";
 import { HealthModule } from "./common/health/health.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { EmailModule } from "./modules/integrations/email/email.module";
 import { FxModule } from "./modules/integrations/fx/fx.module";
 import { GeminiModule } from "./modules/integrations/gemini/gemini.module";
@@ -32,6 +33,7 @@ import { SettlementModule } from "./modules/settlement/settlement.module";
     InvoicesModule,
     PayoutMethodsModule,
     SettlementModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

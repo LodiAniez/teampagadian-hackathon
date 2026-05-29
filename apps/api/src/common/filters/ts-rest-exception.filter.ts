@@ -8,6 +8,7 @@ import {
   HttpStatus,
   NotFoundException,
   UnauthorizedException,
+  UnprocessableEntityException,
 } from "@nestjs/common";
 import type { Response } from "express";
 import { MulterError } from "multer";
@@ -20,7 +21,7 @@ type Mapped = {
   body: ErrorResponse;
 };
 
-function toMapped(exception: unknown, requestId: string): Mapped {
+export function toMapped(exception: unknown, requestId: string): Mapped {
   const base = (
     code: ErrorCode,
     status: number,
@@ -56,6 +57,9 @@ function toMapped(exception: unknown, requestId: string): Mapped {
   }
   if (exception instanceof ConflictException) {
     return base("CONFLICT", 409, exception.message);
+  }
+  if (exception instanceof UnprocessableEntityException) {
+    return base("VALIDATION_FAILED", 422, exception.message);
   }
   if (exception instanceof HttpException) {
     const status = exception.getStatus();

@@ -52,6 +52,8 @@ export function messageForUploadError(err: unknown): string {
         return "Unsupported file type — pick a PDF, PNG, or JPEG";
       case 422:
         return "Couldn't read that file — try another";
+      case 429:
+        return "Too many uploads — please try again in a minute";
       case 500:
       case 502:
       case 503:

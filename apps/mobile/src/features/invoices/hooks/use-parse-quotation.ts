@@ -32,6 +32,12 @@ export async function parseQuotationRequest({
   // Intentionally do not set Content-Type — XHR.send(FormData) writes the
   // multipart boundary header itself. Manually setting it breaks the boundary
   // and the server can't parse the file part.
+  // TODO(TEA-82): pull the URL from the contract. `contract.invoices.parseQuotation.path`
+  // is only the leaf ("/parse-quotation"); the root + invoices pathPrefixes
+  // ("/api/v1" + "/invoices") live in initContract config and ts-rest doesn't
+  // expose them as concatenated strings on the merged router. Either re-export
+  // the prefixes as named consts from @raket/contracts, or accept the manual
+  // string for now — chose the latter to avoid reaching into ts-rest internals.
   const res = await postMultipart(
     `${env.EXPO_PUBLIC_API_URL}/api/v1/invoices/parse-quotation`,
     form,

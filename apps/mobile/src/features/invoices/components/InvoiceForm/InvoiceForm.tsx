@@ -1,8 +1,5 @@
-import { useCallback } from "react";
 import { View } from "react-native";
-import * as DocumentPicker from "expo-document-picker";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { QUOTATION_MIME_TYPES } from "@raket/contracts";
 import type { InvoiceMode } from "../../types";
 import { useInvoiceForm } from "./use-invoice-form";
 import { useReviewEditCard } from "./use-review-edit-card";
@@ -34,18 +31,6 @@ export function InvoiceForm() {
     onRemove: f.removeLineItem,
   });
 
-  const onPickPress = useCallback(async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      // Picker filter — Android treats this as a hint, so the server + client
-      // also re-validate. iOS honours it strictly.
-      type: [...QUOTATION_MIME_TYPES],
-      copyToCacheDirectory: true,
-      multiple: false,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-    await f.onPickFile(result.assets[0]);
-  }, [f]);
-
   const loadingText =
     f.mode === "upload" ? "Gemini is reading your quote…" : "Gemini is reading your description…";
 
@@ -70,7 +55,7 @@ export function InvoiceForm() {
             selectedFile={f.selectedFile}
             message={f.uploadPanelMessage}
             isParsing={f.isUploading}
-            onPickPress={onPickPress}
+            onPickPress={f.onPickPress}
           />
         ) : null}
         {f.mode === "manual" ? <ManualPanelStub /> : null}

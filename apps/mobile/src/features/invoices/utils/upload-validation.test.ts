@@ -92,6 +92,11 @@ describe("messageForUploadError", () => {
     expect(messageForUploadError(err)).toMatch(/try another/i);
   });
 
+  it("maps 429 to a rate-limit message", () => {
+    const err = new ParseQuotationError(429, { code: "RATE_LIMITED", message: "too many" });
+    expect(messageForUploadError(err)).toMatch(/try again in a minute/i);
+  });
+
   it("maps 500/502/503/504 to AI-unavailable", () => {
     for (const status of [500, 502, 503, 504]) {
       const err = new ParseQuotationError(status, null);

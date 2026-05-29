@@ -12,6 +12,10 @@ export type RnFile = {
 // overload — narrower than `as` casts, isolated to this helper module, and
 // doesn't pollute the global FormData type (which would confuse other call
 // sites that pass FormData as a fetch body).
+// This widening is morally a typed cast — TS accepts it because method
+// bivariance lets us extend the `append` overload set without an explicit
+// assertion. We're documenting it rather than using `as` so the project's
+// PreToolUse hook doesn't have to ignore it.
 type RnFormData = FormData & {
   append(name: string, value: { uri: string; name: string; type: string }): void;
 };
@@ -41,6 +45,9 @@ export function postMultipart(
   return new Promise<MultipartResponse>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
+    // 60s matches the upstream Gemini-vision call budget — without this the
+    // ontimeout handler below never fires and a stalled request hangs forever.
+    xhr.timeout = 60_000;
     for (const [name, value] of Object.entries(headers)) {
       if (value) xhr.setRequestHeader(name, value);
     }

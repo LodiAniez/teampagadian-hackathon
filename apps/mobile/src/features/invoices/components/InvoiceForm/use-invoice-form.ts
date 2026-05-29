@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as DocumentPicker from "expo-document-picker";
 import {
   CreateInvoiceBodySchema,
+  QUOTATION_MIME_TYPES,
   type CreateInvoiceBody,
   type ParsedInvoiceDraft,
 } from "@raket/contracts";
@@ -88,6 +90,18 @@ export function useInvoiceForm() {
     }
   }
 
+  async function onPickPress() {
+    const result = await DocumentPicker.getDocumentAsync({
+      // Picker filter — Android treats this as a hint, so the server + client
+      // also re-validate. iOS honours it strictly.
+      type: [...QUOTATION_MIME_TYPES],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    await onPickFile(result.assets[0]);
+  }
+
   function onModeChange(next: InvoiceMode) {
     setMode(next);
     form.setValue("sourceType", next);
@@ -153,6 +167,6 @@ export function useInvoiceForm() {
     selectedFile,
     uploadPanelMessage,
     isUploading: parseQuotation.isParsing,
-    onPickFile,
+    onPickPress,
   };
 }

@@ -173,6 +173,22 @@ describe("StripeService", () => {
       });
     });
 
+    it("normalizes an expanded latest_charge object to its id before mapping", async () => {
+      vi.mocked(mockStripe.paymentIntents.retrieve).mockResolvedValueOnce({
+        id: "pi_test_succeeded",
+        status: "succeeded",
+        amount_received: 10000,
+        currency: "usd",
+        latest_charge: { id: "ch_test_expanded" },
+        created: 1748476800,
+        metadata: { invoice_id: "invoice-1" },
+      });
+
+      const result = await service.tryGetPaymentSucceededEvent("pi_test_succeeded");
+
+      expect(result?.stripeChargeId).toBe("ch_test_expanded");
+    });
+
     it("returns null and does not map when the PI status is not succeeded", async () => {
       vi.mocked(mockStripe.paymentIntents.retrieve).mockResolvedValueOnce({
         id: "pi_test_pending",

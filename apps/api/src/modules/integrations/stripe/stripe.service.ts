@@ -131,6 +131,16 @@ export class StripeService {
    * own signature-verification error propagates as-is; the webhook controller
    * should catch it and return 400.
    */
+  constructEvent(rawBody: Buffer | string, signature: string): WebhookEvent {
+    const secret = this.config.get("STRIPE_WEBHOOK_SECRET", { infer: true });
+    if (!secret) {
+      throw new InternalServerErrorException(
+        "STRIPE_WEBHOOK_SECRET not configured — set in Railway after the webhook endpoint is registered",
+      );
+    }
+    return this.stripe.webhooks.constructEvent(rawBody, signature, secret);
+  }
+
   /**
    * Retrieves a PaymentIntent and, if its status is `succeeded`, returns the
    * domain `PaymentSucceededEvent` the payments slice consumes. Returns null
@@ -146,16 +156,13 @@ export class StripeService {
   async tryGetPaymentSucceededEvent(piId: string): Promise<PaymentSucceededEvent | null> {
     const pi = await this.stripe.paymentIntents.retrieve(piId);
     if (pi.status !== "succeeded") return null;
-    return toPaymentSucceededEvent(pi);
-  }
-
-  constructEvent(rawBody: Buffer | string, signature: string): WebhookEvent {
-    const secret = this.config.get("STRIPE_WEBHOOK_SECRET", { infer: true });
-    if (!secret) {
-      throw new InternalServerErrorException(
-        "STRIPE_WEBHOOK_SECRET not configured — set in Railway after the webhook endpoint is registered",
-      );
-    }
-    return this.stripe.webhooks.constructEvent(rawBody, signature, secret);
+    // Stripe's PaymentIntent.latest_charge is `string | Charge | null`; without
+    // `expand` we always get the string form, but normalize defensively so an
+    // accidental expand later can't slip an object past the Zod mapper.
+    const latestCharge =
+      pi.latest_charge && typeof pi.latest_charge === "object"
+        ? pi.latest_charge.id
+        : pi.latest_charge;
+    return toPaymentSucceededEvent({ ...pi, latest_charge: latestCharge });
   }
 }

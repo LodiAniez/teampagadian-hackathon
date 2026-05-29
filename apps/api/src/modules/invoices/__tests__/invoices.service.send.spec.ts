@@ -179,6 +179,13 @@ describe("InvoicesService.send", () => {
     );
     const emailPayload = mockEmail.sendInvoiceEmail.mock.calls[0][0];
     expect(emailPayload.freelancer).not.toHaveProperty("contactEmail");
+    // TEA-44: successUrl must be the singular public route keyed by share
+    // token, not the internal invoice id — otherwise Stripe redirects to a
+    // page the web app does not serve.
+    const [, , successUrl] = mockStripe.createInvoiceCheckoutSession.mock.calls[0];
+    expect(successUrl).toMatch(/^https:\/\/app\.raket\.ph\/invoice\/[^/]+\/paid$/);
+    expect(successUrl).not.toContain("/invoices/");
+    expect(successUrl).not.toContain(INVOICE_ID);
   });
 
   it("loses the lock race and returns the winner's cached Stripe/QR data without creating a new session", async () => {

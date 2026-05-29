@@ -1,13 +1,24 @@
-import type { Client, Invoice, InvoiceLineItem, SupportedCurrency } from "@raket/contracts";
+import type {
+  Client,
+  Invoice,
+  InvoiceLineItem,
+  PublicInvoiceResponse,
+  SupportedCurrency,
+} from "@raket/contracts";
 import type {
   Client as ClientRow,
   Invoice as InvoiceRow,
   InvoiceLineItem as InvoiceLineItemRow,
+  User as UserRow,
 } from "@prisma/client";
 
 export type InvoiceRowWithClientAndLineItems = InvoiceRow & {
   client: ClientRow;
   lineItems: InvoiceLineItemRow[];
+};
+
+export type InvoiceRowForPublic = InvoiceRowWithClientAndLineItems & {
+  user: UserRow;
 };
 
 function asSupportedCurrency(currency: string): SupportedCurrency {
@@ -63,5 +74,46 @@ export function toInvoiceDto(row: InvoiceRowWithClientAndLineItems): Invoice {
       .sort((a, b) => a.position - b.position)
       .map(toLineItemDto),
     createdAt: row.createdAt.toISOString(),
+  };
+}
+
+// Sanitized public projection: explicitly enumerates exposed fields so a new
+// column on Invoice/User/Client doesn't silently leak through a public link.
+// Defense-in-depth — don't rely on Prisma `select` alone.
+export function toPublicInvoiceDto(row: InvoiceRowForPublic): PublicInvoiceResponse {
+  if (row.status !== "sent" && row.status !== "paid") {
+    throw new Error(`Invariant: toPublicInvoiceDto called with status ${row.status}`);
+  }
+  if (!row.publicShareToken) {
+    throw new Error("Invariant: toPublicInvoiceDto called on row without publicShareToken");
+  }
+  const isPaid = row.status === "paid";
+  return {
+    number: row.number,
+    status: row.status,
+    amount: Number(row.amount),
+    currency: asSupportedCurrency(row.currency),
+    issueDate: isoDate(row.issueDate),
+    dueDate: isoDate(row.dueDate),
+    freelancer: {
+      name: row.user.name,
+      businessName: row.user.businessName,
+    },
+    client: {
+      name: row.client.name,
+    },
+    lineItems: row.lineItems
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((li) => ({
+        description: li.description,
+        quantity: Number(li.quantity),
+        unit: li.unit,
+        rate: Number(li.rate),
+        amount: Number(li.amount),
+      })),
+    stripeCheckoutUrl: isPaid ? null : row.stripeCheckoutUrl,
+    qrCodeDataUrl: isPaid ? null : row.qrCodeDataUrl,
+    token: row.publicShareToken,
   };
 }

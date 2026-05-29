@@ -12,6 +12,7 @@ import type {
   Client as ClientRow,
   Invoice as InvoiceRow,
   InvoiceLineItem as InvoiceLineItemRow,
+  User as UserRow,
 } from "@prisma/client";
 import { InvoicesService } from "../invoices.service";
 import { PrismaService } from "../../../common/prisma/prisma.service";
@@ -531,6 +532,108 @@ describe("InvoicesService", () => {
         client: true,
         lineItems: { orderBy: { position: "asc" } },
       });
+    });
+  });
+
+  describe("getByPublicToken", () => {
+    const SHARE_TOKEN = "shareTokenAbc123";
+    const STRIPE_URL = "https://checkout.stripe.com/c/pay/cs_test_xyz";
+    const QR_URL = "data:image/png;base64,abcd";
+
+    const mockUser: UserRow = {
+      id: userId,
+      supabaseUserId: null,
+      phone: "+639171234567",
+      name: "Juan dela Cruz",
+      businessName: "Juan's Studio",
+      defaultCurrency: "USD",
+      defaultHourlyRate: null,
+      bir2303Election: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+
+    const mockPublicRow = (overrides: Partial<InvoiceRow> = {}) =>
+      ({
+        ...mockInvoiceRow({
+          status: "sent",
+          publicShareToken: SHARE_TOKEN,
+          stripeCheckoutUrl: STRIPE_URL,
+          qrCodeDataUrl: QR_URL,
+          ...overrides,
+        }),
+        client: mockClient,
+        lineItems: [mockLineItemRow()],
+        user: mockUser,
+      }) as never;
+
+    it("returns a sanitized DTO for a sent invoice with checkout URL exposed", async () => {
+      prisma.invoice.findUnique.mockResolvedValue(mockPublicRow());
+
+      const dto = await service.getByPublicToken(SHARE_TOKEN);
+
+      expect(prisma.invoice.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { publicShareToken: SHARE_TOKEN },
+          include: expect.objectContaining({ user: true, client: true }),
+        }),
+      );
+      expect(dto.status).toBe("sent");
+      expect(dto.stripeCheckoutUrl).toBe(STRIPE_URL);
+      expect(dto.qrCodeDataUrl).toBe(QR_URL);
+      expect(dto.token).toBe(SHARE_TOKEN);
+      expect(dto.freelancer).toEqual({ name: "Juan dela Cruz", businessName: "Juan's Studio" });
+      expect(dto.client).toEqual({ name: "Acme Co." });
+    });
+
+    it("nulls out stripeCheckoutUrl and qrCodeDataUrl for a paid invoice", async () => {
+      prisma.invoice.findUnique.mockResolvedValue(mockPublicRow({ status: "paid" }));
+
+      const dto = await service.getByPublicToken(SHARE_TOKEN);
+
+      expect(dto.status).toBe("paid");
+      expect(dto.stripeCheckoutUrl).toBeNull();
+      expect(dto.qrCodeDataUrl).toBeNull();
+    });
+
+    it("throws NotFoundException when the token does not match any invoice", async () => {
+      prisma.invoice.findUnique.mockResolvedValue(null);
+
+      await expect(service.getByPublicToken("does-not-exist")).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws NotFoundException when the invoice is still a draft (no existence leak)", async () => {
+      prisma.invoice.findUnique.mockResolvedValue(mockPublicRow({ status: "draft" }));
+
+      await expect(service.getByPublicToken(SHARE_TOKEN)).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws NotFoundException when the invoice has been voided", async () => {
+      prisma.invoice.findUnique.mockResolvedValue(mockPublicRow({ status: "void" }));
+
+      await expect(service.getByPublicToken(SHARE_TOKEN)).rejects.toThrow(NotFoundException);
+    });
+
+    it("does not expose internal/PII fields in the returned DTO", async () => {
+      prisma.invoice.findUnique.mockResolvedValue(mockPublicRow());
+
+      const dto = await service.getByPublicToken(SHARE_TOKEN);
+      const keys = Object.keys(dto);
+
+      for (const leaked of [
+        "userId",
+        "clientId",
+        "stripeCheckoutSessionId",
+        "stripePaymentIntentId",
+        "sentAt",
+        "id",
+        "createdAt",
+      ]) {
+        expect(keys).not.toContain(leaked);
+      }
+      // The trimmed client/freelancer projections also must not leak contact details.
+      expect(Object.keys(dto.client)).toEqual(["name"]);
+      expect(Object.keys(dto.freelancer).sort()).toEqual(["businessName", "name"]);
     });
   });
 });

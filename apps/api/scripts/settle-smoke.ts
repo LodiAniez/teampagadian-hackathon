@@ -61,7 +61,7 @@ async function main(): Promise<void> {
 
     const user = await prisma.user.create({
       data: {
-        phone: `+1${Date.now().toString().padStart(11, "0").slice(-11)}`,
+        phone: `+1${runId.slice(0, 7)}${Date.now().toString().slice(-4)}`,
         name: `Smoke ${runId}`,
       },
     });

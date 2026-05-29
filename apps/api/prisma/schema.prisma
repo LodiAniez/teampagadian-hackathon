@@ -231,7 +231,9 @@ model Payment {
   // as the `fromBlock` for the SettlementService balance-precheck on retries
   // — narrows the Transfer-event scan to a small window instead of genesis.
   // Nullable for forward-compatibility (rows that predate this feature have
-  // no anchor; precheck falls back to a wide fixed-window scan in that case).
+  // no anchor). On null-anchor retries the precheck is skipped, a warning
+  // is logged, and the row goes straight to re-submission. No such rows
+  // exist today; this is the hackathon-scope choice over a wide-window scan.
   morphAnchorBlock       BigInt?       @map("morph_anchor_block")
   paidAt                 DateTime      @map("paid_at")
   createdAt              DateTime      @default(now()) @map("created_at")

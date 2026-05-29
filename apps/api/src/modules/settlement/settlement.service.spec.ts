@@ -14,6 +14,8 @@ const COINSPH_DEPOSIT: Hex = "0x2222222222222222222222222222222222222222";
 const HOT_WALLET_ADDR: Hex = "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf";
 const TX_HASH: Hex = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd";
 const ORPHANED_HASH: Hex = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+const HASH_A: Hex = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const HASH_B: Hex = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 const CONFIG: SettlementConfig = {
   usdcContract: USDC_CONTRACT,
@@ -234,6 +236,38 @@ describe("SettlementService.settle", () => {
 
       expect(h.publicClient.getLogs).not.toHaveBeenCalled();
     });
+
+    it("warns and skips precheck on null-anchor retry; proceeds to fresh on-chain submission", async () => {
+      const pending = makePayment({
+        morphTxStatus: "SETTLING",
+        morphRetryCount: 2,
+        morphAnchorBlock: null,
+      });
+      h.prisma.payment.findUnique.mockResolvedValueOnce(pending);
+      h.prisma.payment.update.mockResolvedValueOnce(
+        makePayment({
+          morphTxStatus: "SETTLING",
+          morphRetryCount: 3,
+          morphAnchorBlock: null,
+        }),
+      );
+      const warnSpy = vi.spyOn(h.service["logger"], "warn").mockImplementation(() => undefined);
+      h.walletClient.writeContract.mockResolvedValueOnce(TX_HASH);
+      h.publicClient.waitForTransactionReceipt.mockResolvedValueOnce({
+        status: "success",
+      } as never);
+      wireTransition(
+        h,
+        makePayment({ morphTxStatus: "SETTLED", morphTxHash: TX_HASH, morphRetryCount: 3 }),
+      );
+
+      await h.service.settle(makeArgs());
+
+      expect(h.publicClient.getLogs).not.toHaveBeenCalled();
+      expect(h.walletClient.writeContract).toHaveBeenCalledOnce();
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Skipping balance precheck"));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("pi_test_123"));
+    });
   });
 
   describe("retry — orphan adoption", () => {
@@ -258,6 +292,7 @@ describe("SettlementService.settle", () => {
           transactionHash: ORPHANED_HASH,
         } as never,
       ]);
+      h.prisma.payment.findMany.mockResolvedValueOnce([]);
       wireTransition(
         h,
         makePayment({ morphTxStatus: "SETTLED", morphTxHash: ORPHANED_HASH, morphRetryCount: 2 }),
@@ -269,6 +304,115 @@ describe("SettlementService.settle", () => {
       expect(result.morphTxHash).toBe(ORPHANED_HASH);
       expect(h.walletClient.writeContract).not.toHaveBeenCalled();
       expect(h.publicClient.waitForTransactionReceipt).not.toHaveBeenCalled();
+    });
+
+    it("returns the first matching log when multiple candidates match (deterministic)", async () => {
+      const pending = makePayment({
+        morphTxStatus: "SETTLING",
+        morphRetryCount: 1,
+        morphAnchorBlock: BigInt(900),
+      });
+      h.prisma.payment.findUnique.mockResolvedValueOnce(pending);
+      h.prisma.payment.update.mockResolvedValueOnce(
+        makePayment({
+          morphTxStatus: "SETTLING",
+          morphRetryCount: 2,
+          morphAnchorBlock: BigInt(900),
+        }),
+      );
+      h.publicClient.getLogs.mockResolvedValueOnce([
+        { args: { value: BigInt(100_000_000) }, transactionHash: HASH_A } as never,
+        { args: { value: BigInt(100_000_000) }, transactionHash: HASH_B } as never,
+      ]);
+      // No row has claimed either hash yet — first match wins.
+      h.prisma.payment.findMany.mockResolvedValueOnce([]);
+      wireTransition(h, makePayment({ morphTxStatus: "SETTLED", morphTxHash: HASH_A }));
+
+      await h.service.settle(makeArgs());
+
+      expect(h.prisma.payment.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            morphTxStatus: "SETTLED",
+            morphTxHash: HASH_A,
+          }),
+        }),
+      );
+      expect(h.walletClient.writeContract).not.toHaveBeenCalled();
+    });
+
+    it("skips a hash already claimed by another payment row and adopts the next match", async () => {
+      const pending = makePayment({
+        morphTxStatus: "SETTLING",
+        morphRetryCount: 1,
+        morphAnchorBlock: BigInt(900),
+      });
+      h.prisma.payment.findUnique.mockResolvedValueOnce(pending);
+      h.prisma.payment.update.mockResolvedValueOnce(
+        makePayment({
+          morphTxStatus: "SETTLING",
+          morphRetryCount: 2,
+          morphAnchorBlock: BigInt(900),
+        }),
+      );
+      h.publicClient.getLogs.mockResolvedValueOnce([
+        { args: { value: BigInt(100_000_000) }, transactionHash: HASH_A } as never,
+        { args: { value: BigInt(100_000_000) }, transactionHash: HASH_B } as never,
+      ]);
+      // HASH_A already claimed by a sibling payment — skip it, adopt HASH_B.
+      h.prisma.payment.findMany.mockResolvedValueOnce([{ morphTxHash: HASH_A } as never]);
+      wireTransition(h, makePayment({ morphTxStatus: "SETTLED", morphTxHash: HASH_B }));
+
+      await h.service.settle(makeArgs());
+
+      expect(h.prisma.payment.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            morphTxStatus: "SETTLED",
+            morphTxHash: HASH_B,
+          }),
+        }),
+      );
+      expect(h.walletClient.writeContract).not.toHaveBeenCalled();
+    });
+
+    it("propagates P2002 when transitionToSettled collides on an adopted hash; row stays SETTLING", async () => {
+      const pending = makePayment({
+        morphTxStatus: "SETTLING",
+        morphRetryCount: 1,
+        morphAnchorBlock: BigInt(900),
+      });
+      h.prisma.payment.findUnique.mockResolvedValueOnce(pending);
+      h.prisma.payment.update.mockResolvedValueOnce(
+        makePayment({
+          morphTxStatus: "SETTLING",
+          morphRetryCount: 2,
+          morphAnchorBlock: BigInt(900),
+        }),
+      );
+      h.publicClient.getLogs.mockResolvedValueOnce([
+        { args: { value: BigInt(100_000_000) }, transactionHash: ORPHANED_HASH } as never,
+      ]);
+      h.prisma.payment.findMany.mockResolvedValueOnce([]);
+      const collision = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "test",
+        meta: { target: ["morph_tx_hash"] },
+      });
+      h.prisma.$transaction.mockRejectedValueOnce(collision);
+
+      await expect(h.service.settle(makeArgs())).rejects.toBeInstanceOf(
+        Prisma.PrismaClientKnownRequestError,
+      );
+
+      // Row stays SETTLING for the next retry — no FAILED transition attempted.
+      expect(h.prisma.payment.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ morphTxStatus: "FAILED" }),
+        }),
+      );
+      // We adopted, so we never re-submitted on-chain.
+      expect(h.walletClient.writeContract).not.toHaveBeenCalled();
     });
 
     it("ignores Transfer events whose value doesn't match the expected amount", async () => {
@@ -318,6 +462,13 @@ describe("SettlementService.settle", () => {
         where: { id: exhausted.id },
         data: { morphTxStatus: "FAILED" },
       });
+      // The SETTLING-increment update on line 131 must NOT run on the FAILED
+      // path — bail-out happens before the retry-bump transition.
+      expect(h.prisma.payment.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ morphTxStatus: "SETTLING" }),
+        }),
+      );
       expect(h.walletClient.writeContract).not.toHaveBeenCalled();
     });
   });

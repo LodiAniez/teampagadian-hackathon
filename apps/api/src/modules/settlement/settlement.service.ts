@@ -28,6 +28,8 @@ const TRANSFER_EVENT = parseAbiItem(
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 );
 
+const isNonNullString = (value: string | null): value is string => value !== null;
+
 @Injectable()
 export class SettlementService {
   private readonly logger = new Logger(SettlementService.name);
@@ -152,6 +154,12 @@ export class SettlementService {
       }
     }
 
+    if (transitioned.morphRetryCount > 1 && transitioned.morphAnchorBlock === null) {
+      this.logger.warn(
+        `Skipping balance precheck for payment ${payment.id} (PI ${payment.stripePaymentIntentId}, retry #${transitioned.morphRetryCount}): morphAnchorBlock is null. Legacy row predates the precheck feature; proceeding to fresh on-chain submission.`,
+      );
+    }
+
     // Submit on-chain. Throw propagates up: row stays SETTLING with the
     // incremented retry count, Stripe redelivers, next attempt resumes.
     const txHash = await this.walletClient.writeContract({
@@ -181,8 +189,19 @@ export class SettlementService {
       fromBlock,
       toBlock: "latest",
     });
-    const matching = logs.find((l) => l.args.value === expectedUnits);
-    return matching ? matching.transactionHash : null;
+    const candidates = logs.filter((l) => l.args.value === expectedUnits);
+    if (candidates.length === 0) return null;
+
+    // Filter out hashes another payment row has already claimed — without
+    // this check a second SETTLING payment for the same amount could adopt
+    // the first payment's tx hash and trip the morphTxHash unique constraint.
+    const claimed = await this.prisma.payment.findMany({
+      where: { morphTxHash: { in: candidates.map((c) => c.transactionHash) } },
+      select: { morphTxHash: true },
+    });
+    const claimedSet = new Set(claimed.map((row) => row.morphTxHash).filter(isNonNullString));
+    const unclaimed = candidates.find((c) => !claimedSet.has(c.transactionHash));
+    return unclaimed ? unclaimed.transactionHash : null;
   }
 
   // ---------------- Phase C ----------------

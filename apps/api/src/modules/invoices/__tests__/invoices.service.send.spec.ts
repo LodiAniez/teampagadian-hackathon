@@ -19,6 +19,9 @@ const USER_ID = "22222222-2222-2222-2222-222222222222";
 const CLIENT_ID = "33333333-3333-3333-3333-333333333333";
 const CHECKOUT_URL = "https://checkout.stripe.com/c/pay/cs_test_abc";
 const QR_DATA_URL = "data:image/png;base64,iVBORw0KGgo=";
+// Matches `${APP_URL}/invoice/${publicShareToken}` produced by the send flow.
+// The token is randomly generated, so we match by shape (TEA-85, PRD §5).
+const PREVIEW_URL_REGEX = /^https:\/\/app\.raket\.ph\/invoice\/[^/]+$/;
 
 function buildInvoiceRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -155,7 +158,11 @@ describe("InvoicesService.send", () => {
 
     const result = await service.send(USER_ID, INVOICE_ID, SEND_BODY);
 
-    expect(result.checkoutUrl).toBe(CHECKOUT_URL);
+    // TEA-85: API response surfaces the Raket preview URL, not Stripe.
+    // The DB still stores the Stripe URL (asserted below) — flipping that
+    // would break the preview page's "Pay" anchor (TEA-44).
+    expect(result.checkoutUrl).toMatch(PREVIEW_URL_REGEX);
+    expect(result.checkoutUrl).not.toBe(CHECKOUT_URL);
     expect(result.qrCodeDataUrl).toBe(QR_DATA_URL);
     expect(result.invoice.status).toBe("sent");
     expect(mockPrisma.invoice.updateMany).toHaveBeenCalledWith(
@@ -168,6 +175,8 @@ describe("InvoicesService.send", () => {
         }),
       }),
     );
+    // DB persistence: stripeCheckoutUrl row field MUST stay as the Stripe URL —
+    // the preview page reads it for the Pay anchor (TEA-85 load-bearing).
     expect(mockPrisma.invoice.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: INVOICE_ID },
@@ -177,8 +186,17 @@ describe("InvoicesService.send", () => {
     expect(mockEmail.sendInvoiceEmail).toHaveBeenCalledWith(
       expect.objectContaining({ recipientEmail: "ap@acme.com" }),
     );
+    // TEA-85: email CTA targets the Raket preview page, not Stripe directly.
+    expect(mockEmail.sendInvoiceEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentUrl: expect.stringMatching(PREVIEW_URL_REGEX) }),
+    );
     const emailPayload = mockEmail.sendInvoiceEmail.mock.calls[0][0];
     expect(emailPayload.freelancer).not.toHaveProperty("contactEmail");
+    expect(emailPayload.paymentUrl).not.toBe(CHECKOUT_URL);
+    // TEA-85: QR encodes the Raket preview URL so the client lands on our
+    // branded page first, then clicks through to Stripe Checkout.
+    expect(mockQr.toDataUrl).toHaveBeenCalledWith(expect.stringMatching(PREVIEW_URL_REGEX));
+    expect(mockQr.toDataUrl).not.toHaveBeenCalledWith(CHECKOUT_URL);
     // TEA-44: successUrl must be the singular public route keyed by share
     // token, not the internal invoice id — otherwise Stripe redirects to a
     // page the web app does not serve.
@@ -320,7 +338,9 @@ describe("InvoicesService.send", () => {
 
     const result = await service.send(USER_ID, INVOICE_ID, SEND_BODY);
 
-    expect(result.checkoutUrl).toBe(CHECKOUT_URL);
+    // TEA-85: same happy-path flow surfaces the preview URL even when email
+    // fails — DB row still stores the Stripe URL.
+    expect(result.checkoutUrl).toMatch(PREVIEW_URL_REGEX);
     expect(result.invoice.status).toBe("sent");
   });
 

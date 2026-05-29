@@ -24,7 +24,7 @@ function buildParams(overrides: Partial<SendInvoiceEmailParams> = {}): SendInvoi
       businessName: "Juan's Studio",
       contactEmail: "juan@juanstudio.com",
     },
-    paymentUrl: "https://checkout.stripe.com/c/pay/cs_test_abc123",
+    paymentUrl: "https://app.test/invoice/abc123",
     qrCodeDataUrl: "data:image/png;base64,iVBORw0KGgo=",
     recipientEmail: "ap@acme.com",
     ...overrides,
@@ -109,7 +109,7 @@ describe("EmailService", () => {
       await service.sendInvoiceEmail(buildParams());
 
       const payload = vi.mocked(mockResend.emails.send).mock.calls[0][0];
-      expect(payload.html).toContain("https://checkout.stripe.com/c/pay/cs_test_abc123");
+      expect(payload.html).toContain("https://app.test/invoice/abc123");
       expect(payload.html).toContain('src="cid:qr-invoice"');
       expect(payload.html).not.toContain("data:image/png;base64");
       expect(payload.html).toContain("Landing page design");
@@ -160,7 +160,7 @@ describe("EmailService", () => {
 
       const payload = vi.mocked(mockResend.emails.send).mock.calls[0][0];
       expect(payload.text).toBeDefined();
-      expect(payload.text).toContain("https://checkout.stripe.com/c/pay/cs_test_abc123");
+      expect(payload.text).toContain("https://app.test/invoice/abc123");
     });
 
     it("returns the resend response id on success", async () => {

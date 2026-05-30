@@ -27,7 +27,11 @@ loadEnv({ path: path.resolve(__dirname, "../../../.env") });
 const url = process.env.LOCAL_DATABASE_URL ?? process.env.DATABASE_URL;
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
 
-const DEMO_PHONE = "+639171234567";
+// Defaults to a standalone demo user. Set DEMO_USER_PHONE to your own login
+// phone (exact format the JWT carries, e.g. "639383673347") to seed the demo
+// data ONTO your account instead — the existing row is reused so its
+// supabaseUserId stays linked and the mobile app shows this data when you log in.
+const DEMO_PHONE = process.env.DEMO_USER_PHONE ?? "+639171234567";
 
 // FX — same rule as PaymentsService: gross = received × rate, 1% fee, net = gross − fee.
 const FX_FEE_PERCENT = 0.01;
@@ -177,10 +181,11 @@ const pad = (n: number, width: number) => String(n).padStart(width, "0");
 async function main(): Promise<void> {
   await prisma.$connect();
 
-  // Idempotent reset. NOTE: payments/payouts use onDelete: Restrict (settlement
-  // safety), so deleting the user does NOT cascade through them — they must be
-  // cleared first, in dependency order, before the user delete can cascade the
-  // rest (clients → invoices → line items, payout methods).
+  // Idempotent reset. The user ROW is reused (upsert), never deleted, so an
+  // adopted account keeps its supabaseUserId / auth link. Its data is cleared in
+  // FK dependency order — payments/payouts use onDelete: Restrict and invoices
+  // restrict their client, so nothing cascades from the user: payouts → payments
+  // → invoices (line items cascade) → payout methods → clients.
   const existing = await prisma.user.findUnique({
     where: { phone: DEMO_PHONE },
     select: { id: true },
@@ -188,19 +193,30 @@ async function main(): Promise<void> {
   if (existing) {
     await prisma.payout.deleteMany({ where: { payment: { userId: existing.id } } });
     await prisma.payment.deleteMany({ where: { userId: existing.id } });
-    await prisma.user.delete({ where: { id: existing.id } });
+    await prisma.invoice.deleteMany({ where: { userId: existing.id } });
+    await prisma.payoutMethod.deleteMany({ where: { userId: existing.id } });
+    await prisma.client.deleteMany({ where: { userId: existing.id } });
   }
 
-  const user = await prisma.user.create({
-    data: {
-      phone: DEMO_PHONE,
-      name: "Maria Santos",
-      businessName: "Maria Santos Design Studio",
-      defaultCurrency: "USD",
-      defaultHourlyRate: { amount: 75, currency: "USD" },
-      bir2303Election: "EIGHT_PERCENT",
-    },
+  const profile = {
+    name: "Maria Santos",
+    businessName: "Maria Santos Design Studio",
+    defaultCurrency: "USD",
+    defaultHourlyRate: { amount: 75, currency: "USD" },
+    bir2303Election: "EIGHT_PERCENT",
+  } as const;
+
+  const user = await prisma.user.upsert({
+    where: { phone: DEMO_PHONE },
+    update: profile,
+    create: { phone: DEMO_PHONE, ...profile },
   });
+
+  // Namespace the globally-unique demo fields by user, so seeding a second demo
+  // user (e.g. onto your own account via DEMO_USER_PHONE) can't collide with an
+  // existing demo dataset's tokens / payment-intent ids / morph tx hashes.
+  const uslug = user.id.slice(0, 8);
+  const uhex = user.id.replace(/-/g, "").slice(0, 16);
 
   const payoutMethod = await prisma.payoutMethod.create({
     data: {
@@ -253,8 +269,8 @@ async function main(): Promise<void> {
         dueDate: addDays(spec.issue, 14),
         sourceType: "manual",
         sentAt: sent ? addDays(spec.issue, 1) : null,
-        publicShareToken: sent ? `tok_demo_${seq}` : null,
-        stripePaymentIntentId: spec.status === "paid" ? `pi_demo_inv_${seq}` : null,
+        publicShareToken: sent ? `tok_demo_${uslug}_${seq}` : null,
+        stripePaymentIntentId: spec.status === "paid" ? `pi_demo_inv_${uslug}_${seq}` : null,
         lineItems: { create: lineItemsFor(spec.amount, i) },
       },
     });
@@ -270,15 +286,15 @@ async function main(): Promise<void> {
       data: {
         invoiceId: invoice.id,
         userId: user.id,
-        stripePaymentIntentId: `pi_demo_pay_${seq}`,
-        stripeChargeId: `ch_demo_${seq}`,
+        stripePaymentIntentId: `pi_demo_pay_${uslug}_${seq}`,
+        stripeChargeId: `ch_demo_${uslug}_${seq}`,
         amountReceived: spec.amount,
         amountReceivedCurrency: currency,
         amountPhp,
         fxRate: rate,
         fxFeeAmount,
         fxFeePercent: FX_FEE_PERCENT,
-        morphTxHash: `0x${pad(seq, 64)}`,
+        morphTxHash: `0x${uhex}${pad(seq, 64 - uhex.length)}`,
         morphTxStatus: "SETTLED",
         paidAt,
       },
@@ -290,7 +306,7 @@ async function main(): Promise<void> {
         payoutMethodId: payoutMethod.id,
         amountPhp,
         status: "DELIVERED",
-        externalTxnId: `coinsph_demo_${seq}`,
+        externalTxnId: `coinsph_demo_${uslug}_${seq}`,
         completedAt: addDays(spec.issue, (spec.payDays ?? 7) + 1),
       },
     });

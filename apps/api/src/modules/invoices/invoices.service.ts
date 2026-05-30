@@ -396,7 +396,13 @@ export class InvoicesService {
       const successUrl = `${previewUrl}/paid`;
 
       session = await this.stripeService.createInvoiceCheckoutSession(
-        { id: row.id, number: row.number, amount: Number(row.amount), currency: row.currency },
+        {
+          id: row.id,
+          number: row.number,
+          amount: Number(row.amount),
+          currency: row.currency,
+          userId: row.userId,
+        },
         body.clientEmail,
         successUrl,
       );

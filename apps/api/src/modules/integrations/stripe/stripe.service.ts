@@ -83,7 +83,7 @@ export class StripeService {
    * checkout.session.completed webhook (TEA-40) once the client pays.
    */
   async createInvoiceCheckoutSession(
-    invoice: { id: string; number: string; amount: number; currency: string },
+    invoice: { id: string; number: string; amount: number; currency: string; userId: string },
     clientEmail: string,
     successUrl: string,
   ): Promise<CheckoutSessionResult> {
@@ -106,7 +106,14 @@ export class StripeService {
           },
         ],
         success_url: successUrl,
-        metadata: { invoiceId: invoice.id },
+        // snake_case to match the webhook mappers' Zod schemas. Stripe does NOT
+        // copy session metadata onto the PaymentIntent, so set it on both: the
+        // session feeds checkout.session.completed; payment_intent_data feeds
+        // payment_intent.succeeded and the TEA-77 poller fallback.
+        metadata: { invoice_id: invoice.id, freelancer_id: invoice.userId },
+        payment_intent_data: {
+          metadata: { invoice_id: invoice.id, freelancer_id: invoice.userId },
+        },
       },
       { idempotencyKey: `send-invoice-${invoice.id}` },
     );

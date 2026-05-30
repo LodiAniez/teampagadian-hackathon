@@ -120,7 +120,13 @@ describe("StripeService", () => {
   });
 
   describe("createInvoiceCheckoutSession", () => {
-    const invoice = { id: "inv_123", number: "INV-2026-0001", amount: 100.5, currency: "PHP" };
+    const invoice = {
+      id: "inv_123",
+      number: "INV-2026-0001",
+      amount: 100.5,
+      currency: "PHP",
+      userId: "user_abc",
+    };
 
     it("passes an invoice-scoped idempotency key so retries return the same session", async () => {
       vi.mocked(mockStripe.checkout.sessions.create).mockResolvedValueOnce({
@@ -130,8 +136,26 @@ describe("StripeService", () => {
 
       await service.createInvoiceCheckoutSession(invoice, "client@example.com", "https://app/ok");
 
+      expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(expect.anything(), {
+        idempotencyKey: "send-invoice-inv_123",
+      });
+    });
+
+    it("tags both the session and the payment intent with snake_case invoice_id + freelancer_id so the webhook + poller can attribute the payment", async () => {
+      vi.mocked(mockStripe.checkout.sessions.create).mockResolvedValueOnce({
+        id: "cs_test",
+        url: "https://checkout.stripe.com/cs_test",
+      });
+
+      await service.createInvoiceCheckoutSession(invoice, "client@example.com", "https://app/ok");
+
       expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
-        expect.objectContaining({ metadata: { invoiceId: "inv_123" } }),
+        expect.objectContaining({
+          metadata: { invoice_id: "inv_123", freelancer_id: "user_abc" },
+          payment_intent_data: {
+            metadata: { invoice_id: "inv_123", freelancer_id: "user_abc" },
+          },
+        }),
         { idempotencyKey: "send-invoice-inv_123" },
       );
     });

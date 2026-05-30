@@ -59,7 +59,7 @@ Every transaction produces a public, verifiable on-chain receipt on the Morph Ex
 
 ### AI-powered invoicing
 
-Freelancers type a sentence — _"20 hours of UI design for Northwind at $80/hr"_ — and Raket generates a complete invoice instantly using Claude. No templates, no manual entry.
+Freelancers type a sentence — _"20 hours of UI design for Northwind at $80/hr"_ — and Raket generates a complete invoice instantly using Google Gemini. No templates, no manual entry.
 
 ### BIR-ready tax summaries
 
@@ -71,7 +71,7 @@ Raket computes quarterly income breakdowns and generates pre-filled 1701Q and 17
 
 - **Morph L2** makes crypto settlement practical for everyday payouts — 2s finality, near-zero gas fees
 - **BSP** has modernized Philippine payment rails (InstaPay, QR Ph) — real-time domestic delivery is now possible
-- **Claude API** makes AI invoicing and conversational financial tools buildable by a small team
+- **Modern LLMs** (Gemini today, Claude in production) make AI invoicing and conversational financial tools buildable by a small team
 - The Filipino freelance economy is growing 20%+ year-over-year with no focused payment product serving it
 
 ---

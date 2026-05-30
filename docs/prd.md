@@ -34,7 +34,7 @@ There is no payment product built _specifically_ for the Filipino freelancer ear
 
 - BSP has modernized payment rails (InstaPay, QR Ph, real-time settlement)
 - Ethereum L2s (Morph) now offer ~2s finality with near-zero fees — making crypto settlement practical for everyday freelancer payouts
-- AI (Claude, GPT) makes invoice generation, document parsing, and conversational financial assistants buildable by a small team
+- AI (Gemini, Claude) makes invoice generation, document parsing, and conversational financial assistants buildable by a small team
 - The Filipino freelance economy is growing 20%+ year-over-year
 
 ---
@@ -102,8 +102,8 @@ There is no payment product built _specifically_ for the Filipino freelancer ear
 **Invoice Creation**
 Three input modes, all routing to the same review form:
 
-1. **Plain text input** — freelancer types a sentence, Claude parses to structured invoice
-2. **Quotation upload** — freelancer uploads existing PDF/image quote, Claude vision extracts line items
+1. **Plain text input** — freelancer types a sentence, Gemini parses to structured invoice
+2. **Quotation upload** — freelancer uploads existing PDF/image quote, Gemini vision extracts line items
 3. **Manual form** — fallback for direct entry
 
 Invoice currency is locked to **USD for V1**. Multi-currency invoicing is post-hackathon.
@@ -133,7 +133,7 @@ Invoice currency is locked to **USD for V1**. Multi-currency invoicing is post-h
 **Freelancer Dashboard**
 
 - Total earnings shown in PHP (primary), USD equivalent (secondary) — computed from `amount_php` stored at settlement time
-- Savings counter: _"You saved ₱2,580 vs PayPal this month"_ — computed as 4% PayPal fee minus Raket's 2.9% Stripe fee on total USD received
+- Savings counter: _"You saved ₱2,580 vs PayPal this month"_ — computed as the fee delta: ≈6% PayPal all-in minus Raket's 2.9% Stripe fee (≈3.1% of total USD received). See Decision 20.
 - This month, pending invoices count
 - Earnings chart by month, by client, by country
 - Invoice list with status filters and Morph Explorer link per paid invoice
@@ -142,7 +142,7 @@ Invoice currency is locked to **USD for V1**. Multi-currency invoicing is post-h
 **AI Chat Assistant ("Ask your books")**
 
 - Side panel chat interface, streaming responses
-- Tool-use loop: Claude → DB query → response
+- Tool-use loop: Gemini → DB query → response
 - Pre-built prompt chips for demo reliability
 - Supports questions like: "How much did I earn from US clients this quarter?", "Who's my biggest client?", "What's my tax estimate?"
 
@@ -226,21 +226,21 @@ Invoice currency is locked to **USD for V1**. Multi-currency invoicing is post-h
 
 ### Stack
 
-| Layer         | Tech                                          | Why                                                                                 |
-| ------------- | --------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Frontend      | Next.js 15 (App Router)                       | Team strength, fast iteration, Vercel deploy                                        |
-| Backend       | NestJS                                        | Team strength, structured for handing off post-hackathon                            |
-| Database      | Postgres (Supabase)                           | Free tier, auth + realtime included                                                 |
-| Realtime      | Supabase Realtime                             | Push invoice status changes to frontend — instant dashboard toast, zero extra infra |
-| Auth          | Supabase Auth (phone OTP)                     | Saves 3-4 hours vs custom                                                           |
-| Payments      | Stripe (test mode)                            | Client-facing card checkout, webhook, battle-tested DX                              |
-| Settlement    | Morph L2 + USDC (ERC20)                       | On-chain cross-border settlement, ~2s finality, verifiable txn hash on stage        |
-| Web3 client   | viem                                          | Backend hot wallet ops — send USDC, wait for receipt. No client-side wallet needed. |
-| AI            | Anthropic Claude API (Sonnet 4.6 + Haiku 4.5) | Tool-use first-class, TypeScript SDK                                                |
-| AI SDK        | Vercel AI SDK                                 | Streaming UI hooks, free, fast integration                                          |
-| Email         | Resend                                        | Free tier, simple API                                                               |
-| QR Generation | `qrcode` npm package                          | Trivial, server-side                                                                |
-| Hosting       | Vercel (FE) + Railway (BE)                    | Both have free tiers, fast deploys                                                  |
+| Layer         | Tech                                   | Why                                                                                                             |
+| ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Frontend      | Next.js 15 (App Router)                | Team strength, fast iteration, Vercel deploy                                                                    |
+| Backend       | NestJS                                 | Team strength, structured for handing off post-hackathon                                                        |
+| Database      | Postgres (Supabase)                    | Free tier, auth + realtime included                                                                             |
+| Realtime      | Supabase Realtime                      | Push invoice status changes to frontend — instant dashboard toast, zero extra infra                             |
+| Auth          | Supabase Auth (phone OTP)              | Saves 3-4 hours vs custom                                                                                       |
+| Payments      | Stripe (test mode)                     | Client-facing card checkout, webhook, battle-tested DX                                                          |
+| Settlement    | Morph L2 + USDC (ERC20)                | On-chain cross-border settlement, ~2s finality, verifiable txn hash on stage                                    |
+| Web3 client   | viem                                   | Backend hot wallet ops — send USDC, wait for receipt. No client-side wallet needed.                             |
+| AI            | Google Gemini API (`gemini-2.5-flash`) | Free tier for the hackathon; structured output + vision. Upgrading to Claude in production for higher accuracy. |
+| AI SDK        | `@google/genai`                        | Structured JSON output (`responseSchema`), vision, streaming chat                                               |
+| Email         | Resend                                 | Free tier, simple API                                                                                           |
+| QR Generation | `qrcode` npm package                   | Trivial, server-side                                                                                            |
+| Hosting       | Vercel (FE) + Railway (BE)             | Both have free tiers, fast deploys                                                                              |
 
 ### Data Model (Core Tables)
 
@@ -264,7 +264,7 @@ payouts (id, payment_id, payout_method_id, amount_php, status, external_txn_id)
 - **USDC on Morph Hoodi:** [`0x4f7b6bdd0aa93DfA43cc441db0E39b51dAa4bF4D`](https://explorer-hoodi.morph.network/address/0x4f7b6bdd0aa93DfA43cc441db0E39b51dAa4bF4D) (mock ERC20, 6 decimals, mintable — deployed by team for testnet demo) — hot wallet sends ERC20 transfer via `viem.writeContract()` (standard ERC20 `transfer(address,uint256)` ABI) + `waitForTransactionReceipt()`
 - **Coins.ph + InstaPay:** Mocked — animated UI sequence only. Real integration is post-hackathon.
 - **Supabase Realtime:** Subscribed to `invoices` table — pushes paid status to frontend for instant toast
-- **Claude API:** Messages API with tools, vision for quotation parsing
+- **Gemini API:** structured output (`responseSchema`) + vision for quotation parsing, via `@google/genai`
 - **Resend:** Transactional email
 - **Exchange rate API:** exchangerate.host (free) for USD→PHP rate, fetched and stored at settlement time
 
@@ -325,7 +325,7 @@ _Phases overlap by design — frontend and backend leads work in parallel._
 | ------------------------------ | ---------------------------------------------------------------------------------------- |
 | Person A (Frontend lead)       | Auth UI, invoice forms, dashboard, FX comparison, chat UI                                |
 | Person B (Backend lead)        | DB schema, API, Stripe integration, hot wallet USDC service, Morph settlement, tax logic |
-| Person C (AI + integrations)   | Claude prompts, tool-use loop, quotation parsing, AI narrative                           |
+| Person C (AI + integrations)   | Gemini prompts, structured output, quotation parsing, AI narrative                       |
 | Person D (Design + pitch + QA) | Branding, demo data, polish, pitch deck, demo rehearsals                                 |
 
 If team is 3: drop Person D, distribute their work, but assign one explicit demo/pitch owner.
@@ -359,7 +359,7 @@ If team is 3: drop Person D, distribute their work, but assign one explicit demo
 5. **Quotation handling:** Upload-as-input only, NOT a separate quotation workflow
 6. **QR code:** Generated for every invoice, embedded in dashboard + email + PDF
 7. **Payment flow:** `Client (USD card) → Stripe → hot wallet bridges USD→USDC → Morph (USDC to Coins.ph) → mocked Coins.ph+InstaPay animation → GCash`. Stripe and Morph are real; Coins.ph+InstaPay are mocked and disclosed.
-8. **AI model:** Claude Sonnet 4.6 for invoice generation + chat assistant; Haiku 4.5 for lightweight tasks
+8. **AI model:** Gemini 2.5 Flash (`gemini-2.5-flash`, free tier) for invoice generation + chat assistant during the hackathon. **Production plan: upgrade to Claude** for higher-accuracy parsing and chat — Gemini's free tier is the hackathon-cost choice, not the long-term model.
 9. **Demo flow:** Type-to-invoice → send → team-controlled client pays by card (Stripe) → Morph confirms → mocked animation → PHP toast with Explorer link → ask AI
 10. **BIR scope:** Generate pre-filled ITR (1701Q / 1701A) PDFs ready to file — filing itself stays with the freelancer via eBIRForms. We prepare, they submit.
 11. **Demo control:** Team controls the "client" device on stage — Stripe test card `4242 4242 4242 4242` pre-entered.
@@ -374,7 +374,7 @@ If team is 3: drop Person D, distribute their work, but assign one explicit demo
 17. **Payout method:** GCash number only for V1. Validated `^09\d{9}$`. Last 4 digits shown in UI. OTP gate on save.
 18. **PHP amount:** Live USD→PHP rate from exchangerate.host fetched at settlement time, stored as `fx_rate_at_settlement`. AI queries stored `amount_php` — not a live rate.
 19. **Real-time toast:** Supabase Realtime on `invoices` table. Fires after Morph confirmation, includes Explorer link.
-20. **Fee narrative:** "$50 more on a $1,600 invoice vs PayPal." Computed as 4% PayPal minus 2.9% Stripe on total USD. Shown as savings counter on dashboard. Do not claim zero fees — Stripe's 2.9% is real.
+20. **Fee narrative:** "$50 more on a $1,600 invoice vs PayPal." Computed as the fee _delta_: ≈6% PayPal all-in minus 2.9% Stripe ≈ **3.1% of USD received** ($50 / $1,600 ≈ 0.031 — the backend constant in `dashboard.service.ts`). Shown as savings counter on dashboard. Do not claim zero fees — Stripe's 2.9% is real, so it is netted out, not ignored.
 21. **Morph pitch:** "Stripe collects the payment. Morph settles it in seconds — no SWIFT, no correspondent banks. Every transaction on-chain forever."
 22. **Hot wallet security:** `MORPH_HOT_WALLET_PRIVATE_KEY` in Railway env vars only — never in code or `.env.example`. Balance check on NestJS startup, warning if below 500 USDC testnet.
 

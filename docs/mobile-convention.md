@@ -58,7 +58,7 @@ apps/mobile/
           use-invoices.ts               # list/filter
           use-invoice.ts                # single
           use-create-invoice.ts
-          use-parse-invoice-text.ts     # Claude text→invoice
+          use-parse-invoice-text.ts     # Gemini text→invoice
         api/
           invoices.api.ts
         utils/

@@ -86,11 +86,11 @@ function FxRow({ row }: { row: FxDisplayRow }) {
         >
           {row.receivedLabel}
         </Text>
-        {row.vsRaketLabel ? (
-          <Text className="text-xs text-gray-400">{row.vsRaketLabel}</Text>
-        ) : (
+        {row.isBest ? (
           <Text className="text-xs font-medium text-emerald-600">Best rate</Text>
-        )}
+        ) : row.vsRaketLabel ? (
+          <Text className="text-xs text-gray-400">{row.vsRaketLabel}</Text>
+        ) : null}
       </View>
     </View>
   );

@@ -9,6 +9,9 @@ export type FxDisplayRow = {
   // null on the Raket row (nothing to compare against itself).
   vsRaketLabel: string | null;
   highlighted: boolean;
+  // True for the single provider that nets the freelancer the most. Data-driven
+  // off receivedPhp so the "Best rate" badge can never assert a false claim.
+  isBest: boolean;
 };
 
 export function formatFeePct(pct: number): string {
@@ -29,6 +32,11 @@ export function formatVsRaket(row: FxProviderComparison): string | null {
 }
 
 export function buildFxRows(comparison: FxComparison): FxDisplayRow[] {
+  // The best provider is the one with the highest net. `providers` is ordered
+  // raket-first, so `find` resolves ties to Raket.
+  const maxReceivedPhp = Math.max(...comparison.providers.map((p) => p.receivedPhp));
+  const bestProvider = comparison.providers.find((p) => p.receivedPhp === maxReceivedPhp)?.provider;
+
   return comparison.providers.map((p) => ({
     provider: p.provider,
     label: p.label,
@@ -36,5 +44,6 @@ export function buildFxRows(comparison: FxComparison): FxDisplayRow[] {
     receivedLabel: formatPhp(p.receivedPhp),
     vsRaketLabel: formatVsRaket(p),
     highlighted: p.provider === "raket",
+    isBest: p.provider === bestProvider,
   }));
 }

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { BirElectionSchema } from "../auth/auth.schema";
 import { InvoiceStatusSchema } from "../invoices/invoices.schema";
 import { SupportedCurrencySchema } from "../shared/money";
 
@@ -81,16 +80,10 @@ export const InvoiceStatusResultSchema = z.object({
 });
 export type InvoiceStatusResult = z.infer<typeof InvoiceStatusResultSchema>;
 
-export const TaxEstimateResultSchema = z.object({
-  quarter: z.number().int().min(1).max(4),
-  year: z.number().int(),
-  grossReceiptsPhp: amountPhp,
-  estimatedTaxPhp: amountPhp,
-  formCode: z.string(),
-  deadline: z.string().date(),
-  election: BirElectionSchema,
-});
-export type TaxEstimateResult = z.infer<typeof TaxEstimateResultSchema>;
+// Note: the tax tool (`calculate_tax_estimate`) returns the canonical
+// `TaxComputation` from tax.schema.ts — the deterministic M8 calculator's
+// output — rather than a parallel chat-specific shape, so the tax figures have
+// a single source of truth.
 
 export const ClientSummaryResultSchema = z.object({
   name: z.string(),

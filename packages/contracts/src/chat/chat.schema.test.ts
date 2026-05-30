@@ -10,7 +10,6 @@ import {
   DemoPromptChipSchema,
   EarningsResultSchema,
   InvoiceStatusResultSchema,
-  TaxEstimateResultSchema,
 } from "./chat.schema";
 
 describe("ChatMessageSchema", () => {
@@ -125,30 +124,6 @@ describe("InvoiceStatusResultSchema", () => {
     expect(() =>
       InvoiceStatusResultSchema.parse({ ...valid, invoices: [{ ...item, status: "pending" }] }),
     ).toThrow();
-  });
-});
-
-describe("TaxEstimateResultSchema", () => {
-  const valid = {
-    quarter: 1,
-    year: 2026,
-    grossReceiptsPhp: 487200,
-    estimatedTaxPhp: 38976,
-    formCode: "1701Q",
-    deadline: "2026-05-15",
-    election: "EIGHT_PERCENT",
-  } satisfies z.input<typeof TaxEstimateResultSchema>;
-
-  it("parses a tax-estimate result", () => {
-    expect(() => TaxEstimateResultSchema.parse(valid)).not.toThrow();
-  });
-
-  it("rejects a quarter outside 1-4", () => {
-    expect(() => TaxEstimateResultSchema.parse({ ...valid, quarter: 5 })).toThrow();
-  });
-
-  it("rejects an election outside the BIR enum", () => {
-    expect(() => TaxEstimateResultSchema.parse({ ...valid, election: "flat" })).toThrow();
   });
 });
 

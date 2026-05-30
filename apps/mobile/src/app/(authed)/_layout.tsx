@@ -4,6 +4,7 @@ import { Redirect, Stack } from "expo-router";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { useSession } from "@/lib/auth";
 import { env } from "@/lib/env";
+import { usePayoutRealtime } from "@/features/settlement";
 
 // Dev-only escape hatch: skip the Supabase-session redirect when EXPO_PUBLIC_DEV_BYPASS_AUTH=true.
 // Always false in production builds (gated by __DEV__). Pair with EXPO_PUBLIC_DEV_BEARER so the
@@ -12,6 +13,11 @@ const isAuthBypassed = __DEV__ && env.EXPO_PUBLIC_DEV_BYPASS_AUTH === "true";
 
 export default function AuthedLayout() {
   const { session, isLoading } = useSession();
+
+  // Open the realtime "money landed" subscription as soon as we have a session,
+  // and reconnect on foreground (the hook is keyed on the user id and no-ops
+  // without one). Mounted here so it lives for the whole authed session.
+  usePayoutRealtime(session?.user.id);
 
   if (isLoading && !isAuthBypassed) {
     return <View className="flex-1 bg-gray-50" />;

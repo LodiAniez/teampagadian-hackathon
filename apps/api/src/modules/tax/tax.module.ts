@@ -7,5 +7,6 @@ import { TaxController } from "./tax.controller";
   imports: [CommonAuthModule],
   controllers: [TaxController],
   providers: [TaxCalculatorService],
+  exports: [TaxCalculatorService],
 })
 export class TaxModule {}

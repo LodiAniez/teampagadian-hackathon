@@ -46,14 +46,14 @@ export class ChatToolsService {
     if (input.group_by) {
       const dimension = earningsDimension(input.group_by);
       const rows = await this.prisma.$queryRaw<GroupedEarningsRow[]>(Prisma.sql`
-        SELECT ${dimension} AS label,
+        SELECT ${dimension.label} AS label,
                SUM(p.amount_php)::float AS "amountPhp",
                COUNT(p.id)::int AS "invoiceCount"
         FROM payments p
         JOIN invoices i ON i.id = p.invoice_id
         JOIN clients c ON c.id = i.client_id
         WHERE ${where}
-        GROUP BY ${dimension}
+        GROUP BY ${dimension.group}
         ORDER BY "amountPhp" DESC
       `);
       return {
@@ -197,14 +197,26 @@ export class ChatToolsService {
   }
 }
 
-function earningsDimension(groupBy: NonNullable<QueryEarningsInput["group_by"]>): Prisma.Sql {
+// `label` is what the user sees; `group` is the aggregation key. They diverge
+// for `client`: clients aren't unique by name (no DB constraint — see the Client
+// model), so we group by the client id to keep distinct same-named clients
+// separate, while still labelling each row with the name. c.id is the PK, so
+// c.name is functionally dependent and selectable under this GROUP BY.
+function earningsDimension(groupBy: NonNullable<QueryEarningsInput["group_by"]>): {
+  label: Prisma.Sql;
+  group: Prisma.Sql;
+} {
   switch (groupBy) {
     case "client":
-      return Prisma.sql`c.name`;
-    case "country":
-      return Prisma.sql`COALESCE(c.country, 'XX')`;
-    case "month":
-      return Prisma.sql`TO_CHAR(p.paid_at, 'YYYY-MM')`;
+      return { label: Prisma.sql`c.name`, group: Prisma.sql`c.id, c.name` };
+    case "country": {
+      const country = Prisma.sql`COALESCE(c.country, 'XX')`;
+      return { label: country, group: country };
+    }
+    case "month": {
+      const month = Prisma.sql`TO_CHAR(p.paid_at, 'YYYY-MM')`;
+      return { label: month, group: month };
+    }
   }
 }
 

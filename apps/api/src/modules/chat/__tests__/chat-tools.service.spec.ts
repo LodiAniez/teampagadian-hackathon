@@ -123,6 +123,19 @@ describe("ChatToolsService", () => {
       expect(values).toContain("US");
       expect(values.some((v) => typeof v === "string" && v.includes("Acme"))).toBe(true);
     });
+
+    it("groups by client id (not name) so distinct same-named clients stay separate", async () => {
+      h.prisma.$queryRaw.mockResolvedValueOnce([]);
+
+      await h.service.queryEarnings(USER_ID, {
+        start_date: "2026-01-01",
+        end_date: "2026-03-31",
+        group_by: "client",
+      });
+
+      const sql = (h.prisma.$queryRaw.mock.calls[0]?.[0] as Prisma.Sql).sql;
+      expect(sql).toMatch(/GROUP BY\s+c\.id/);
+    });
   });
 
   describe("getInvoiceStatus", () => {

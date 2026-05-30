@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetch as expoFetch } from "expo/fetch";
 import { authHeader } from "@/lib/auth";
 import { env } from "@/lib/env";
+import { buildRequestMessages } from "../lib/chat-request";
 import { initialStreamState, parseSseChunk, reduceChunk } from "../lib/chat-stream";
 import type { UiChatMessage } from "../types";
 
@@ -79,7 +80,7 @@ export function useStreamingChat() {
           authorization,
         },
         body: JSON.stringify({
-          messages: history.map((m) => ({ role: m.role, content: m.text })),
+          messages: buildRequestMessages(history),
         }),
       });
 

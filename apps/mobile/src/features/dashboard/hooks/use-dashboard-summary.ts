@@ -14,7 +14,7 @@ export function useDashboardSummary() {
 
   const data = useMemo<MonthBarDatum[]>(() => {
     return (query.data?.body ?? []).map((r: EarningsByMonth) => ({
-      month: new Date(r.month + "-01").toLocaleDateString("en-PH", { month: "short" }),
+      month: new Date(r.month + "-01T00:00:00").toLocaleDateString("en-PH", { month: "short" }),
       amountPhp: r.amountPhp,
     }));
   }, [query.data]);

@@ -30,10 +30,14 @@ export const GetInvoiceStatusInputSchema = z.object({
 export type GetInvoiceStatusInput = z.infer<typeof GetInvoiceStatusInputSchema>;
 
 // Quarter is 1-3 (BIR files no Q4 quarterly — the annual return absorbs it).
-// Literal union so the value flows into TaxCalculatorService.computeQuarterly's
-// `1 | 2 | 3` signature without a cast.
+// Modelled as a string enum, not a numeric literal union: Gemini's tool schema
+// requires every enum value to be a string (TYPE_STRING) and rejects the entire
+// tool set with a 400 otherwise. The transform maps it back to the numeric
+// `1 | 2 | 3` that TaxCalculatorService.computeQuarterly expects, so the literal
+// type still flows downstream without a cast.
+const QUARTER_VALUES = { "1": 1, "2": 2, "3": 3 } as const;
 export const CalculateTaxEstimateInputSchema = z.object({
-  quarter: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  quarter: z.enum(["1", "2", "3"]).transform((q) => QUARTER_VALUES[q]),
   year: z.number().int().min(2018).max(2100),
 });
 export type CalculateTaxEstimateInput = z.infer<typeof CalculateTaxEstimateInputSchema>;

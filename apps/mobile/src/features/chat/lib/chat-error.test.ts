@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { toFriendlyChatError } from "./chat-error";
 
 const RATE_LIMIT =
-  "The assistant is getting a lot of questions right now. Give it a few seconds and try again.";
+  "We're on Gemini's free tier and just hit its rate limit — not a real error. Give it a few seconds and try again.";
 const GENERIC = "Something went wrong. Please try again.";
 
 describe("toFriendlyChatError", () => {

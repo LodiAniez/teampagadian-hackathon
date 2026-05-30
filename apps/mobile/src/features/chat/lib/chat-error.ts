@@ -8,7 +8,7 @@ const RATE_LIMIT_RE =
   /quota|rate.?limit|too many requests|429|resource.?exhausted|failed after \d+ attempt/i;
 
 const RATE_LIMIT_MESSAGE =
-  "The assistant is getting a lot of questions right now. Give it a few seconds and try again.";
+  "We're on Gemini's free tier and just hit its rate limit — not a real error. Give it a few seconds and try again.";
 const GENERIC_MESSAGE = "Something went wrong. Please try again.";
 
 export function toFriendlyChatError(raw: string | null | undefined): string {

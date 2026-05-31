@@ -30,13 +30,29 @@ export const GetInvoiceStatusInputSchema = z.object({
 export type GetInvoiceStatusInput = z.infer<typeof GetInvoiceStatusInputSchema>;
 
 // Quarter is 1-3 (BIR files no Q4 quarterly — the annual return absorbs it).
-// Literal union so the value flows into TaxCalculatorService.computeQuarterly's
-// `1 | 2 | 3` signature without a cast.
+// On the wire it's a string enum, not a numeric literal union: Gemini's tool
+// schema requires every enum value to be a string (TYPE_STRING) and rejects the
+// whole tool set with a 400 otherwise.
+//
+// The schema is deliberately a *pure* string enum with no `.transform()`: the AI
+// SDK validates the model's args against this schema (as `inputSchema`) and then
+// `execute` re-parses the same value, so the schema must be idempotent — a
+// transform would mutate the value on the first parse and then throw on the
+// second (number fed back into a string enum). The string → numeric `1 | 2 | 3`
+// conversion that TaxCalculatorService.computeQuarterly needs happens once, at
+// the `execute` boundary, via QUARTER_VALUES (a lookup, so no cast).
+export const QUARTER_VALUES = { "1": 1, "2": 2, "3": 3 } as const;
 export const CalculateTaxEstimateInputSchema = z.object({
-  quarter: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  quarter: z.enum(["1", "2", "3"]),
   year: z.number().int().min(2018).max(2100),
 });
-export type CalculateTaxEstimateInput = z.infer<typeof CalculateTaxEstimateInputSchema>;
+// The numeric-quarter shape the tax calculator consumes, after the execute-time
+// conversion from the wire string. Not `z.infer` of the schema above, which is
+// string-quartered.
+export interface CalculateTaxEstimateInput {
+  quarter: (typeof QUARTER_VALUES)[keyof typeof QUARTER_VALUES];
+  year: number;
+}
 
 export const GetClientSummaryInputSchema = z.object({
   client_name: z.string().min(1).optional(),
@@ -75,8 +91,10 @@ export function buildChatToolDefs(service: ChatToolsService): Record<ChatToolNam
       description:
         "Estimate Philippine BIR quarterly income tax for a given quarter (1-3) and year, using the freelancer's BIR election. Computed deterministically, not by the model.",
       parameters: CalculateTaxEstimateInputSchema,
-      execute: async (userId, input) =>
-        service.calculateTaxEstimate(userId, CalculateTaxEstimateInputSchema.parse(input)),
+      execute: async (userId, input) => {
+        const { quarter, year } = CalculateTaxEstimateInputSchema.parse(input);
+        return service.calculateTaxEstimate(userId, { quarter: QUARTER_VALUES[quarter], year });
+      },
     },
     get_client_summary: {
       description:

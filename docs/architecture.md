@@ -31,7 +31,7 @@ flowchart LR
 
     Stripe[Stripe Checkout<br/>+ Webhooks<br/>USD only]:::real
     Morph[Morph L2 - chain 2910<br/>passive USDC ledger<br/>no Raket smart contract]:::real
-    Claude[Anthropic Claude<br/>Sonnet 4.6 / Haiku 4.5]:::real
+    Gemini[Google Gemini<br/>gemini-2.5-flash]:::real
     Resend[Resend<br/>Transactional email]:::real
     FX[exchangerate.host<br/>USD to PHP]:::real
     Coins[Coins.ph + InstaPay<br/>USDC to PHP to GCash]:::mock
@@ -51,7 +51,7 @@ flowchart LR
     API -->|"sign locally + broadcast<br/>USDC.transfer(coinsph, X)"| Morph
     API -->|"waitForTransactionReceipt"| Morph
 
-    API -->|Messages API + tools + vision| Claude
+    API -->|structured output + vision| Gemini
     API -->|Send invoice email| Resend
     API -->|Fetch live rate at settlement| FX
 
@@ -156,7 +156,7 @@ flowchart TB
         PaymentsMod[payments module<br/>Stripe intents + webhook + poll]:::api
         SettlementMod[settlement module<br/>viem hot wallet, FX snapshot]:::api
         PayoutsMod[payouts module<br/>Coins.ph + InstaPay mock]:::api
-        ChatMod[chat module<br/>Claude tool-use loop]:::api
+        ChatMod[chat module<br/>Gemini chat loop]:::api
         TaxMod[tax module<br/>quarterly calc, PDF gen]:::api
         EmailMod[email module<br/>Resend send + templates]:::api
         ContractsPkg["@raket/contracts<br/>ts-rest + Zod"]:::api
@@ -253,7 +253,7 @@ sequenceDiagram
 
 ## 5. Invoice Creation Flow
 
-Three input modes, one form. Claude does the heavy lifting on the text and upload paths.
+Three input modes, one form. Gemini does the heavy lifting on the text and upload paths.
 
 ```mermaid
 flowchart LR
@@ -268,16 +268,16 @@ flowchart LR
     Upload[Upload:<br/>quotation.pdf / .png]:::ui
     Manual[Manual form]:::ui
 
-    ClaudeText[Claude Sonnet 4.6<br/>text → structured invoice]:::ai
-    ClaudeVision[Claude Sonnet 4.6 vision<br/>document → line items]:::ai
+    GeminiText[Gemini 2.5 Flash<br/>text → structured invoice]:::ai
+    GeminiVision[Gemini 2.5 Flash vision<br/>document → line items]:::ai
 
     Review[Review form<br/>edit, set due date]:::ui
     Save[(invoices +<br/>invoice_line_items)]:::store
     Send[Send: copy link / QR / Resend email]:::ui
 
     Start --> Mode
-    Mode -->|text| Text --> ClaudeText --> Review
-    Mode -->|upload| Upload --> ClaudeVision --> Review
+    Mode -->|text| Text --> GeminiText --> Review
+    Mode -->|upload| Upload --> GeminiVision --> Review
     Mode -->|manual| Manual --> Review
     Review --> Save --> Send
 ```
@@ -438,7 +438,7 @@ Pulled from §5 and §13 of `prd.md` — call this out explicitly so reviewers c
 | USDC → PHP off-ramp     | **Mocked** — animated UI sequence only                                                                                                  | Coins.ph API (BSP-licensed VASP)                                                                                                 |
 | PHP → GCash delivery    | **Mocked**                                                                                                                              | InstaPay via Coins.ph                                                                                                            |
 | Invoice email           | **Real** Resend                                                                                                                         | Real Resend                                                                                                                      |
-| AI parsing + chat       | **Real** Claude (Sonnet 4.6 + Haiku 4.5)                                                                                                | Same                                                                                                                             |
+| AI parsing + chat       | **Real** Google Gemini (`gemini-2.5-flash`, free tier) via `@google/genai`                                                              | **Upgrade to Claude** for higher-accuracy parsing + chat                                                                         |
 | Phone OTP               | **Real** Supabase Auth, **mocked** SMS delivery (code shown on screen)                                                                  | Real SMS via Supabase/Twilio                                                                                                     |
 | BIR ITR                 | **Prepared** (PDF + CSV) — freelancer files via eBIRForms                                                                               | Same. Filing stays with freelancer until CAS accreditation.                                                                      |
 
@@ -473,7 +473,7 @@ flowchart LR
     end
     subgraph SaaS["Third-party"]
         StripeS[Stripe test mode]:::vendor
-        ClaudeS[Anthropic API]:::vendor
+        GeminiS[Google Gemini API]:::vendor
         ResendS[Resend]:::vendor
         FxS[exchangerate.host]:::vendor
     end
@@ -486,7 +486,7 @@ flowchart LR
     ApiDeploy --> Rpc
     Rpc --> Usdc
     ApiDeploy --> StripeS
-    ApiDeploy --> ClaudeS
+    ApiDeploy --> GeminiS
     ApiDeploy --> ResendS
     ApiDeploy --> FxS
     HotWallet -. signs txns .-> Rpc

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Raket — Pitch Deck</title>
+<style>
+  /* ---- DARK (default) ---- */
+  :root{
+    --bg:#07140f;          /* dark green-black, matches app's emerald theme */
+    --glow1:#0d3b2e;
+    --glow2:#0a2e26;
+    --ink:#eefbf6;
+    --muted:#8fb3a6;
+    --brand:#10b981;       /* emerald 500 — app mobile brand */
+    --brand2:#2dd4bf;      /* bright teal accent (web brand #00C896 family) */
+    --gold:#fbbf24;        /* Filipino sun gold — pairs with green */
+    --green:#34d399;       /* "delivered" success */
+    --red:#fb7185;         /* legacy pain */
+    --line:rgba(143,179,166,.20);
+    --card:rgba(255,255,255,.04);
+    --shadow:none;
+    --good-border:rgba(52,211,153,.4);
+    --good-shadow:none;
+    --bad-border:rgba(251,113,133,.35);
+    --real-border:rgba(52,211,153,.45);
+    --mock-border:rgba(251,113,133,.45);
+    --toast-bg:linear-gradient(100deg,rgba(52,211,153,.14),rgba(34,211,238,.10));
+    --toast-border:rgba(52,211,153,.5);
+    --dot-glow:0 0 0 6px rgba(52,211,153,.18);
+    --mark-text:#04221a;
+    --mark-shadow:0 8px 30px rgba(16,185,129,.45);
+    --pill-bg:transparent;
+    --pill-hot-bg:transparent;
+  }
+  /* ---- LIGHT (matches app's emerald-on-white surfaces) ---- */
+  :root[data-theme="light"]{
+    --bg:#ffffff;
+    --glow1:#d1fae5;
+    --glow2:#cffafe;
+    --ink:#0b1f18;
+    --muted:#5c7a6f;
+    --brand:#059669;       /* emerald 600 — readable on white */
+    --brand2:#0d9488;      /* teal 600 */
+    --gold:#b45309;        /* amber 700 — legible on white */
+    --green:#059669;
+    --red:#e11d48;
+    --line:rgba(11,31,24,.14);
+    --card:#ffffff;
+    --shadow:0 10px 30px rgba(11,31,24,.07);
+    --good-border:rgba(5,150,105,.45);
+    --good-shadow:0 10px 30px rgba(5,150,105,.10);
+    --bad-border:rgba(225,29,72,.35);
+    --real-border:rgba(5,150,105,.5);
+    --mock-border:rgba(225,29,72,.45);
+    --toast-bg:linear-gradient(100deg,rgba(5,150,105,.12),rgba(13,148,136,.08));
+    --toast-border:rgba(5,150,105,.5);
+    --dot-glow:0 0 0 6px rgba(5,150,105,.16);
+    --mark-text:#ffffff;
+    --mark-shadow:0 8px 24px rgba(5,150,105,.35);
+    --pill-bg:#fff;
+    --pill-hot-bg:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(1200px 800px at 80% -10%, var(--glow1) 0%, transparent 60%),
+               radial-gradient(900px 700px at -10% 110%, var(--glow2) 0%, transparent 55%),
+               var(--bg);
+    color:var(--ink);
+    font-family:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    overflow:hidden;
+    transition:background .35s ease,color .35s ease;
+  }
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{
+    position:absolute;inset:0;
+    display:none;
+    flex-direction:column;
+    justify-content:center;
+    padding:6vh 9vw;
+    animation:fade .45s ease;
+  }
+  .slide.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+  h1{font-size:clamp(34px,6vw,76px);line-height:1.02;margin:0 0 .25em;letter-spacing:-.02em}
+  h2{font-size:clamp(26px,3.6vw,46px);margin:0 0 .5em;letter-spacing:-.01em}
+  h3{font-size:clamp(18px,1.8vw,24px);margin:0 0 .3em;color:var(--brand2)}
+  p,li{font-size:clamp(15px,1.5vw,21px);line-height:1.5;color:var(--ink)}
+  .muted{color:var(--muted)}
+  .kicker{text-transform:uppercase;letter-spacing:.22em;font-size:13px;color:var(--brand2);font-weight:700;margin-bottom:18px}
+  .big{font-size:clamp(40px,7vw,96px);font-weight:800;letter-spacing:-.03em}
+  .grad{background:linear-gradient(100deg,var(--brand2),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  .row{display:flex;gap:28px;flex-wrap:wrap}
+  .col{flex:1 1 0;min-width:220px}
+  .grid{display:grid;gap:18px}
+  .grid.c2{grid-template-columns:1fr 1fr}
+  .grid.c3{grid-template-columns:1fr 1fr 1fr}
+  .grid.c4{grid-template-columns:repeat(4,1fr)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;box-shadow:var(--shadow);transition:background .35s ease,border-color .35s ease}
+  .card .n{font-size:clamp(26px,3vw,40px);font-weight:800;letter-spacing:-.02em}
+  .card.good{border-color:var(--good-border);box-shadow:var(--good-shadow)}
+  .card.bad{border-color:var(--bad-border)}
+
+  table{width:100%;border-collapse:collapse;font-size:clamp(14px,1.4vw,19px)}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+  td.win{color:var(--green);font-weight:700}
+  .tick{color:var(--green);font-weight:800}
+  .cross{color:var(--red);font-weight:800}
+  .warn{color:var(--gold);font-weight:700}
+
+  .pill{display:inline-block;padding:6px 14px;border:1px solid var(--line);border-radius:999px;font-size:14px;color:var(--muted);margin:4px 6px 4px 0;background:var(--pill-bg)}
+  .pill.hot{border-color:var(--gold);color:var(--gold);background:var(--pill-hot-bg)}
+
+  /* shipped-vs-roadmap status tags */
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid var(--line);vertical-align:middle;margin-left:8px}
+  .tag-live{color:var(--green);border-color:var(--good-border)}
+  .tag-soon{color:var(--gold);border-color:var(--gold)}
+
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+  .step{flex:1 1 0;min-width:120px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;position:relative;box-shadow:var(--shadow)}
+  .step .t{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .step .v{font-size:clamp(15px,1.4vw,18px);margin-top:6px;font-weight:600}
+  .arrow{display:flex;align-items:center;justify-content:center;color:var(--brand2);font-size:24px;padding:0 8px}
+  .real{border-color:var(--real-border)}
+  .mock{border-style:dashed;border-color:var(--mock-border)}
+
+  .toast{
+    display:inline-flex;align-items:center;gap:14px;
+    background:var(--toast-bg);
+    border:1px solid var(--toast-border);border-radius:16px;padding:18px 22px;margin-top:10px;
+  }
+  .toast .dot{width:12px;height:12px;border-radius:50%;background:var(--green);box-shadow:var(--dot-glow)}
+  .toast b{font-size:clamp(18px,2vw,26px)}
+  .toast a{color:var(--brand2);text-decoration:none;font-size:14px}
+
+  .logo{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+  .mark{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;font-weight:900;font-size:24px;color:var(--mark-text);box-shadow:var(--mark-shadow)}
+  .wordmark{font-weight:800;font-size:24px;letter-spacing:-.02em}
+
+  footer{position:absolute;left:9vw;right:9vw;bottom:3.2vh;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
+  .nav{position:fixed;right:18px;bottom:14px;display:flex;gap:8px;z-index:20}
+  .nav button{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:10px;width:38px;height:34px;cursor:pointer;font-size:16px;box-shadow:var(--shadow)}
+  .nav button:hover{border-color:var(--brand2)}
+  .progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--brand),var(--gold));z-index:30;transition:width .35s}
+
+  .lead{font-size:clamp(18px,2vw,28px);color:var(--muted);max-width:18ch}
+  .em{color:var(--gold);font-weight:700}
+  ul.clean{list-style:none;padding:0;margin:0}
+  ul.clean li{padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+  ul.clean li::before{content:"›";color:var(--brand2);font-weight:800}
+  .hint{position:fixed;left:18px;bottom:16px;color:var(--muted);font-size:12px;z-index:20}
+
+  /* speaker-notes overlay — hidden until toggled, never part of slide nav */
+  .notes{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+    background:rgba(4,12,9,.55);backdrop-filter:blur(3px);padding:4vh 5vw}
+  .notes.open{display:flex;animation:fade .25s ease}
+  .notes-card{width:min(1000px,100%);max-height:92vh;overflow:auto;background:var(--card);
+    border:1px solid var(--line);border-radius:18px;padding:24px 28px;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+  :root[data-theme="light"] .notes-card{background:#fff}
+  .notes-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+  #notesClose{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:9px;
+    width:32px;height:30px;cursor:pointer;font-size:14px}
+  #notesClose:hover{border-color:var(--brand2)}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 — TITLE -->
+  <section class="slide active">
+    <div class="logo">
+      <div class="mark">R</div>
+      <div class="wordmark">Raket</div>
+    </div>
+    <div class="kicker">Cross-border payments · Filipino freelancers</div>
+    <h1>Get paid for every gig,<br/><span class="grad">from anywhere in the world.</span></h1>
+    <p class="lead" style="max-width:34ch">Clients pay by card. Morph settles in seconds. Pesos land in GCash — with an on-chain receipt.</p>
+    <div style="margin-top:26px">
+      <span class="pill hot">AI invoicing</span>
+      <span class="pill hot">~5s settlement</span>
+      <span class="pill hot">On-chain proof</span>
+      <span class="pill hot">BIR-ready taxes</span>
+    </div>
+    <footer><span>Raket — “raket” = the side hustle</span><span>Hackathon build · 48 hours</span></footer>
+  </section>
+
+  <!-- 2 — PROBLEM -->
+  <section class="slide">
+    <div class="kicker">The problem</div>
+    <h2>1.5M Filipinos freelance globally.<br/>Getting paid is the hardest part of the job.</h2>
+    <div class="row" style="margin-top:10px">
+      <div class="col" style="flex:1.3 1 0">
+        <table>
+          <tr><th>Method</th><th>Fee (all-in)</th><th>Settlement</th><th>Pain</th></tr>
+          <tr><td><b>PayPal</b></td><td class="cross">4–7%</td><td>3–5 days</td><td class="muted">Fund holds, opaque FX</td></tr>
+          <tr><td><b>Wise</b></td><td class="warn">~1–2%</td><td>1–3 days</td><td class="muted">Slow KYC, not PH-native</td></tr>
+          <tr><td><b>Payoneer</b></td><td class="warn">~2–3%</td><td>1–2 days</td><td class="muted">Hidden spread, dated UX</td></tr>
+          <tr><td><b>Bank wire</b></td><td class="cross">₱500+ flat</td><td>3–5 days</td><td class="muted">Worst FX, slowest</td></tr>
+        </table>
+      </div>
+      <div class="col">
+        <div class="card bad">
+          <h3 style="color:var(--red)">On a $1,600 invoice</h3>
+          <p class="big" style="font-size:clamp(36px,5vw,64px)">~$96</p>
+          <p class="muted">lost to PayPal fees — plus a 3–5 day wait, every single time.</p>
+        </div>
+        <p class="muted" style="margin-top:16px">…on top of <b class="em">zero tooling</b> for invoicing, earnings tracking, or BIR tax filing.</p>
+      </div>
+    </div>
+    <footer><span>Source: PRD §2 · raket-problem-solved.md</span><span>02 — The problem</span></footer>
+  </section>
+
+  <!-- 3 — WHY BROKEN -->
+  <section class="slide">
+    <div class="kicker">Why it's broken</div>
+    <h2>The apps aren't slow. <span class="grad">The pipes are.</span></h2>
+    <div class="grid c3" style="margin-top:14px">
+      <div class="card"><div class="n">1970s</div><p class="muted">Every cross-border transfer routes through SWIFT &amp; correspondent banks — designed half a century ago.</p></div>
+      <div class="card"><div class="n">Batches</div><p class="muted">Legacy rails clear in batches, not real time. Every hop between banks adds another day.</p></div>
+      <div class="card"><div class="n">Opaque</div><p class="muted">No receipt, no proof, no visibility. You wait and hope the money shows up.</p></div>
+    </div>
+    <p class="lead" style="max-width:40ch;margin-top:28px">PayPal and Wise sit on top of these pipes. <span class="em">We replace the pipes.</span></p>
+    <footer><span>Source: raket-problem-solved.md §2</span><span>03 — Why it's broken</span></footer>
+  </section>
+
+  <!-- 4 — SOLUTION -->
+  <section class="slide">
+    <div class="kicker">The solution</div>
+    <h2>Raket is the payment account built<br/>for the way Filipinos actually earn.</h2>
+    <div class="grid c4" style="margin-top:14px">
+      <div class="card"><h3>Invoice <span class="tag tag-live">Live</span></h3><p class="muted">Type one sentence → Gemini generates a complete invoice. Or upload a quote.</p></div>
+      <div class="card"><h3>Get paid <span class="tag tag-live">Live</span></h3><p class="muted">Client pays by card. Morph settles USDC on-chain in ~2s. <span class="muted">(GCash off-ramp mocked)</span></p></div>
+      <div class="card"><h3>Track <span class="tag tag-soon">Next</span></h3><p class="muted">Earnings by client &amp; country, live FX savings vs PayPal, ask AI anything.</p></div>
+      <div class="card"><h3>File taxes <span class="tag tag-soon">Next</span></h3><p class="muted">Pre-filled BIR 1701Q / 1701A PDFs, ready for eBIRForms.</p></div>
+    </div>
+    <p class="lead" style="max-width:52ch;margin-top:26px"><span class="em">Live today: invoice → get paid.</span> Next: track → file taxes. One product, built on the FX transparency and PH-native UX nobody else offers.</p>
+    <footer><span>Source: PRD §1, §5</span><span>04 — The solution</span></footer>
+  </section>
+
+  <!-- 5 — WOW MOMENT -->
+  <section class="slide">
+    <div class="kicker">The wow moment</div>
+    <h2>Client taps “Pay.” Five seconds later,<br/>pesos are in GCash — with a live on-chain receipt.</h2>
+    <div class="flow" style="margin-top:18px">
+      <div class="step real"><div class="t">Client</div><div class="v">Pays $1,600 by card</div></div>
+      <div class="arrow">→</div>
+      <div class="step real"><div class="t">Stripe</div><div class="v">Collects USD</div></div>
+      <div class="arrow">→</div>
+      <div class="step real"><div class="t">Morph L2</div><div class="v">USDC settles ~2s</div></div>
+      <div class="arrow">→</div>
+      <div class="step mock"><div class="t">Coins.ph · InstaPay</div><div class="v">USDC → PHP</div></div>
+      <div class="arrow">→</div>
+      <div class="step mock"><div class="t">GCash</div><div class="v">Pesos delivered</div></div>
+    </div>
+    <div class="toast">
+      <span class="dot"></span>
+      <div><b>₱89,984 delivered to GCash •••• 1234</b><br/><a>↗ view on Morph Explorer</a></div>
+    </div>
+    <p class="muted" style="margin-top:14px"><span class="tick">Solid</span> = real on stage (Stripe + Morph).&nbsp;&nbsp;<span class="cross">Dashed</span> = Coins.ph/InstaPay leg mocked &amp; disclosed.</p>
+    <footer><span>Source: PRD §6 Flow 3 · architecture.md §4</span><span>05 — The demo</span></footer>
+  </section>
+
+  <!-- 6 — HOW: two pipes -->
+  <section class="slide">
+    <div class="kicker">How it works</div>
+    <h2>Stripe collects. <span class="grad">Morph settles.</span> No SWIFT, no correspondent banks.</h2>
+    <div class="grid c2" style="margin-top:12px">
+      <div class="card good">
+        <h3>The webhook is the only thing that crosses</h3>
+        <p class="muted">USD never touches the chain. When Stripe says “paid,” NestJS independently signs an ERC-20 <b>USDC.transfer</b> with <b>viem</b> and broadcasts to Morph. The chain validates the signature and includes the tx — that's it.</p>
+      </div>
+      <div class="card">
+        <h3>Every payment is verifiable</h3>
+        <p class="muted">We only write <b>morph_tx_hash</b> after <b>waitForTransactionReceipt</b> confirms (~2s). The toast we show the freelancer is never a lie — there's a public Explorer link to prove it.</p>
+      </div>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <span class="pill">payment_intent.succeeded → trigger</span>
+      <span class="pill">10s polling fallback (demo-safe)</span>
+      <span class="pill">Supabase Realtime status push (next)</span>
+      <span class="pill">FX snapshot stored at settlement</span>
+    </div>
+    <footer><span>Source: architecture.md §1–§4</span><span>06 — How it works</span></footer>
+  </section>
+
+  <!-- 7 — AI invoicing -->
+  <section class="slide">
+    <div class="kicker">AI invoicing</div>
+    <h2>Type a sentence. Get a complete invoice.</h2>
+    <div class="row" style="margin-top:10px">
+      <div class="col" style="flex:1.1 1 0">
+        <div class="card">
+          <p class="muted" style="margin:0 0 6px">Freelancer types:</p>
+          <p style="font-size:clamp(18px,2.2vw,28px);margin:0"><span class="em">“20 hours of UI design for Northwind at $80/hr, due in 14 days.”</span></p>
+        </div>
+        <div class="arrow" style="font-size:30px;justify-content:flex-start;padding:14px 0 14px 8px">↓ Gemini 2.5 Flash</div>
+        <div class="card good">
+          <table>
+            <tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+            <tr><td>UI design</td><td>20 hrs</td><td>$80</td><td class="win">$1,600</td></tr>
+          </table>
+          <p class="muted" style="margin:10px 0 0">Client: Northwind · Due: +14 days · Currency: USD</p>
+        </div>
+      </div>
+      <div class="col">
+        <h3>Three ways in, one form</h3>
+        <ul class="clean">
+          <li><b>Text</b> — a sentence → structured invoice</li>
+          <li><b>Upload</b> — Gemini vision reads an existing PDF/image quote into line items</li>
+          <li><b>Manual</b> — direct entry fallback</li>
+        </ul>
+        <p class="muted" style="margin-top:14px">No templates. No spreadsheet. Send by link, QR, or email in one tap.</p>
+      </div>
+    </div>
+    <footer><span>Source: PRD §5 · architecture.md §5</span><span>07 — AI invoicing</span></footer>
+  </section>
+
+  <!-- 8 — Dashboard / savings -->
+  <section class="slide">
+    <div class="kicker">Earnings &amp; savings <span class="tag tag-soon">UI in build</span></div>
+    <h2>Proof you're keeping more — in pesos.</h2>
+    <div class="grid c3" style="margin-top:12px">
+      <div class="card good"><h3>Saved vs PayPal</h3><p class="big" style="font-size:clamp(34px,4.4vw,56px);color:var(--green)">~$50</p><p class="muted">per $1,600 invoice — ≈6% PayPal minus 2.9% Stripe. The real delta, on USD received.</p></div>
+      <div class="card"><h3>Total earnings</h3><p class="big" style="font-size:clamp(34px,4.4vw,56px)">₱487K</p><p class="muted">PHP primary, USD secondary — snapshotted at settlement.</p></div>
+      <div class="card"><h3>Ask your books</h3><p class="muted">“How much from US clients this quarter?” “Who's my biggest client?” Gemini queries your data and answers in seconds.</p></div>
+    </div>
+    <p class="muted" style="margin-top:20px">Earnings, savings and FX comparison are <span class="em">computed by the backend today</span>; the freelancer dashboard UI is the immediate next build. <span class="em">We don't claim zero fees; we show the truth.</span></p>
+    <footer><span>Source: PRD §5 Dashboard · Decision 20 ($50 / $1,600)</span><span>08 — Dashboard</span></footer>
+  </section>
+
+  <!-- 9 — BIR taxes -->
+  <section class="slide">
+    <div class="kicker">BIR-ready taxes <span class="tag tag-soon">UI in build</span></div>
+    <h2>The quarterly obligation every freelancer dreads — done in minutes.</h2>
+    <div class="grid c2" style="margin-top:12px">
+      <div class="card good">
+        <h3>Computed today <span class="tag tag-live">Live</span></h3>
+        <ul class="clean">
+          <li>Quarterly &amp; annual gross receipts in PHP (Q1–Q4)</li>
+          <li>Income tax under the 8% election — computed deterministically in the backend, never hallucinated</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Next build <span class="tag tag-soon">Next</span></h3>
+        <ul class="clean">
+          <li>Pre-filled <b>1701Q</b> &amp; <b>1701A</b> PDFs matching BIR layout</li>
+          <li>CSV export for your accountant · plain-English AI summary</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:16px"><b>Honest handoff:</b> Raket prepares the ITR; you submit via eBIRForms. <span class="em">No other payment app computes PH freelancer taxes at all.</span></p>
+    <footer><span>Source: PRD §5 BIR · Decision 10</span><span>09 — Taxes</span></footer>
+  </section>
+
+  <!-- 10 — DIFFERENTIATION -->
+  <section class="slide">
+    <div class="kicker">What wins the pitch</div>
+    <h2>Nobody is building this for this user.</h2>
+    <table style="margin-top:8px">
+      <tr><th></th><th class="win">Raket</th><th>PayPal</th><th>Wise</th><th>Payoneer</th></tr>
+      <tr><td>Settlement to GCash<span class="warn">*</span></td><td class="win">~5s</td><td>3–5 days</td><td>1–3 days</td><td>1–2 days</td></tr>
+      <tr><td>Fee on $1,600 invoice</td><td class="win">~$46</td><td>~$96</td><td>~$32</td><td>~$48</td></tr>
+      <tr><td>On-chain settlement proof</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+      <tr><td>AI invoice creation</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+      <tr><td>Conversational earnings assistant</td><td class="warn">◐ soon</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+      <tr><td>BIR tax computation</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+      <tr><td>Pre-filled BIR forms (1701Q/1701A)</td><td class="warn">◐ soon</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+      <tr><td>Built for Filipino freelancers</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td class="warn">⚠ generic</td></tr>
+    </table>
+    <p class="muted" style="margin-top:12px;font-size:14px"><span class="tick">✓</span> shipped &nbsp;·&nbsp; <span class="warn">◐ soon</span> = near-term roadmap, not yet shipped &nbsp;·&nbsp; <span class="warn">*</span> Stripe + Morph settlement is real (~2s on-chain); the Coins.ph→GCash off-ramp is mocked (slide 5)</p>
+    <footer><span>Source: PRD §8 · Wise wins on fee; Raket wins on speed + proof + tooling</span><span>10 — Differentiation</span></footer>
+  </section>
+
+  <!-- 11 — TECH / ARCHITECTURE -->
+  <section class="slide">
+    <div class="kicker">Built to ship — and to last</div>
+    <h2>Real rails. Typed end to end. Handoff-ready.</h2>
+    <div class="grid c2" style="margin-top:10px">
+      <div class="card">
+        <h3>The stack</h3>
+        <div style="margin-top:6px">
+          <span class="pill">Expo / React Native</span>
+          <span class="pill">Next.js 15 (/pay)</span>
+          <span class="pill">NestJS</span>
+          <span class="pill">Prisma · Supabase Postgres</span>
+          <span class="pill">Supabase Realtime + Auth</span>
+          <span class="pill">Stripe</span>
+          <span class="pill hot">Morph L2 + USDC · viem</span>
+          <span class="pill">Gemini 2.5 Flash · @google/genai</span>
+          <span class="pill">Resend</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Engineered, not hacked</h3>
+        <ul class="clean">
+          <li><b>@raket/contracts</b> (ts-rest + Zod) — one wire spec; both sides break at compile time</li>
+          <li>Vertical slices, mappers at the boundary, typed errors</li>
+          <li>TDD on the demo path: invoice → pay → webhook → settle</li>
+          <li>Monorepo (Turborepo) ready for the team to keep building</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:18px"><b>Production path is real:</b> Stripe Stablecoin Payments collapses the hot-wallet float — Stripe converts USD→USDC and deposits to our wallet on Morph. No treasury risk.</p>
+    <footer><span>Source: architecture.md · PRD §7, Decision 13</span><span>11 — Architecture</span></footer>
+  </section>
+
+  <!-- 12 — WHY NOW / MARKET -->
+  <section class="slide">
+    <div class="kicker">Why now</div>
+    <h2>The wedge is open — and the rails just got built.</h2>
+    <div class="grid c4" style="margin-top:12px">
+      <div class="card"><div class="n" style="color:var(--brand2)">Morph</div><p class="muted">L2 with ~2s finality &amp; near-zero fees makes everyday crypto settlement practical.</p></div>
+      <div class="card"><div class="n" style="color:var(--gold)">BSP</div><p class="muted">InstaPay &amp; QR Ph modernized PH rails — real-time domestic delivery is live.</p></div>
+      <div class="card"><div class="n" style="color:var(--green)">AI</div><p class="muted">Modern LLMs make AI invoicing &amp; financial assistants buildable by a small team.</p></div>
+      <div class="card"><div class="n">+20%</div><p class="muted">Filipino freelance economy growth YoY — with no focused payment product.</p></div>
+    </div>
+    <p class="lead" style="max-width:48ch;margin-top:26px">Wise is generic. PayPal is hostile. GCash &amp; Maya are domestic-only. <span class="em">Raket owns the global-earning Filipino freelancer.</span></p>
+    <footer><span>Source: PRD §2 “Why Now”, §2 Opportunity</span><span>12 — Why now</span></footer>
+  </section>
+
+  <!-- 13 — TEAM & ROADMAP -->
+  <section class="slide">
+    <div class="kicker">Team &amp; roadmap</div>
+    <h2>Built in 48 hours — <span class="grad">engineered to keep going.</span></h2>
+    <div class="grid c2" style="margin-top:10px">
+      <div class="card">
+        <h3>Team Pagadian</h3>
+        <ul class="clean">
+          <li><b>Frontend</b> — auth, invoice forms, dashboard, FX compare, chat UI</li>
+          <li><b>Backend</b> — schema, API, Stripe, hot-wallet USDC + Morph settlement, tax logic</li>
+          <li><b>AI &amp; integrations</b> — Gemini prompts, structured output, quotation vision, narratives</li>
+          <li><b>Design, pitch &amp; QA</b> — branding, demo data, rehearsals, this deck</li>
+        </ul>
+      </div>
+      <div class="card good">
+        <h3>What's next</h3>
+        <ul class="clean">
+          <li><b>Now</b> — live: AI invoicing + Stripe→Morph on-chain settlement (testnet). Coins.ph/InstaPay mocked &amp; disclosed</li>
+          <li><b>Next</b> — freelancer dashboard, BIR forms (PDF/CSV), “Ask your books” chat — backend ready, UI in build</li>
+          <li><b>Then</b> — Stripe Stablecoin Payments (no float), real Coins.ph off-ramp, Maya &amp; bank payouts, upgrade AI to Claude</li>
+          <li><b>Later</b> — multi-currency, team accounts, BIR CAS accreditation → Official Receipts in-app</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:16px">The hot wallet is scaffolding by design — production collapses the USD→USDC bridge into Stripe's rails. <span class="em">No treasury risk at scale.</span></p>
+    <footer><span>Source: PRD §11 Team · §5 Out-of-scope · Decision 13</span><span>13 — Team &amp; roadmap</span></footer>
+  </section>
+
+  <!-- 14 — CLOSING -->
+  <section class="slide">
+    <div class="logo">
+      <div class="mark">R</div>
+      <div class="wordmark">Raket</div>
+    </div>
+    <h1>Get paid for every gig,<br/><span class="grad">from anywhere in the world.</span></h1>
+    <div class="row" style="margin-top:18px">
+      <div class="card good col" style="max-width:380px">
+        <p class="muted" style="margin:0">Live demo path</p>
+        <p style="margin:6px 0 0;font-size:clamp(16px,1.7vw,22px)">Type-to-invoice → send → client pays by card → <span class="em">Morph confirms in ~2s</span> → verifiable on-chain receipt.</p>
+      </div>
+      <div class="col" style="max-width:360px">
+        <p class="lead" style="max-width:none">Clients pay by card. Morph settles in seconds — with proof on-chain. Earnings, AI assistant &amp; BIR tools are next.</p>
+      </div>
+    </div>
+    <footer><span>Track: Cross-Border Remittance — replacing SWIFT with Morph</span><span>Thank you · Raket</span></footer>
+  </section>
+
+</div>
+
+<!-- SPEAKER NOTES — presenter-only overlay. NOT a .slide, so arrow keys never reach it. Toggle with N. -->
+<div class="notes" id="notes" aria-hidden="true">
+  <div class="notes-card">
+    <div class="notes-head">
+      <div class="kicker" style="margin:0">Presenter notes · only you can see this</div>
+      <button id="notesClose" title="Close (N / Esc)">✕</button>
+    </div>
+    <h3 style="color:var(--ink);font-size:clamp(18px,2vw,24px);margin:6px 0 14px">~3-minute demo script <span class="muted" style="font-size:.7em;font-weight:400">— only demo what's built</span></h3>
+    <div class="grid c2" style="gap:10px 32px">
+      <table>
+        <tr><th style="width:64px">Time</th><th>Say &amp; do</th></tr>
+        <tr><td><b>0:00</b></td><td><b>Hook.</b> “1.5M Filipinos freelance globally. Every one loses 4–7% to PayPal and waits days.” <span class="muted">(slides 2–3)</span></td></tr>
+        <tr><td><b>0:30</b></td><td><b>Invoice live.</b> Type <span class="em">“20 hrs UI design for Northwind at $80/hr.”</span> → Gemini fills the form. Tap Send. <span class="muted">(slide 7)</span></td></tr>
+        <tr><td><b>1:00</b></td><td><b>Client pays.</b> On the “client” phone open /pay, tap Pay Now, card <span class="em">4242 4242 4242 4242</span>, confirm.</td></tr>
+      </table>
+      <table>
+        <tr><th style="width:64px">Time</th><th>Say &amp; do</th></tr>
+        <tr><td><b>1:45</b></td><td><b>THE moment.</b> “Stripe collected. Morph settled in ~2 seconds.” Open the <span class="em">Morph Explorer</span> tx — the real, verifiable on-chain receipt. <span class="muted">(slide 5)</span></td></tr>
+        <tr><td><b>2:30</b></td><td><b>Vision (slides, not app).</b> “Earnings, an AI assistant that answers ‘how much from US clients?’, and pre-filled BIR forms are next — backend's already computing them.” <span class="muted">(slides 8–9, 13)</span></td></tr>
+        <tr><td><b>3:00</b></td><td><b>Close.</b> Differentiation + “Get paid for every gig, from anywhere.” <span class="muted">(slides 10, 14)</span></td></tr>
+      </table>
+    </div>
+    <p class="muted" style="margin:12px 0 0;font-size:15px"><b class="warn">Do NOT open</b> the Dashboard, Tax, or Chat tabs live — they're <b>“Coming soon”</b> stubs. Show those as <b>slides</b> only.</p>
+    <p class="muted" style="margin:6px 0 0;font-size:15px"><b class="warn">Safeguards:</b> disclose the Coins.ph/InstaPay leg is mocked · webhook has a 10s poll fallback · have a confirmed Morph tx hash + backup video ready if WiFi/RPC fails.</p>
+    <p class="muted" style="margin:8px 0 0;font-size:12px">Source: PRD §4 demo criteria · §6 flows · §9 risks · press <b>N</b> or <b>Esc</b> to hide</p>
+  </div>
+</div>
+
+<div class="hint">← →  navigate &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; T theme &nbsp;·&nbsp; N notes &nbsp;·&nbsp; Home/End jump</div>
+<div class="nav">
+  <button id="notesBtn" title="Speaker notes (N)">📝</button>
+  <button id="theme" title="Toggle light/dark (T)">☀</button>
+  <button id="prev" title="Previous (←)">‹</button>
+  <button id="next" title="Next (→)">›</button>
+  <button id="fs" title="Fullscreen (F)">⛶</button>
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  const prog=document.getElementById('progress');
+  function show(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    prog.style.width=((i+1)/slides.length*100)+'%';
+  }
+  function next(){show(i+1)}
+  function prev(){show(i-1)}
+  document.getElementById('next').onclick=next;
+  document.getElementById('prev').onclick=prev;
+  document.getElementById('fs').onclick=()=>{
+    if(!document.fullscreenElement)document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  };
+
+  // theme toggle — persists choice; defaults to OS preference, falls back to dark
+  const themeBtn=document.getElementById('theme');
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme',t);
+    themeBtn.textContent = t==='light' ? '☾' : '☀';
+    themeBtn.title = (t==='light'?'Switch to dark':'Switch to light')+' (T)';
+  }
+  const saved=localStorage.getItem('raket-theme');
+  applyTheme(saved || (matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
+  function toggleTheme(){
+    const t=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';
+    localStorage.setItem('raket-theme',t);
+    applyTheme(t);
+  }
+  themeBtn.onclick=toggleTheme;
+
+  // speaker notes — presenter-only overlay, toggled with N (never reachable by arrows)
+  const notes=document.getElementById('notes');
+  const isNotesOpen=()=>notes.classList.contains('open');
+  function toggleNotes(force){
+    const open = force!==undefined ? force : !isNotesOpen();
+    notes.classList.toggle('open',open);
+    notes.setAttribute('aria-hidden', String(!open));
+  }
+  document.getElementById('notesBtn').onclick=()=>toggleNotes();
+  document.getElementById('notesClose').onclick=()=>toggleNotes(false);
+  notes.onclick=e=>{ if(e.target===notes) toggleNotes(false); }; // click backdrop to close
+
+  addEventListener('keydown',e=>{
+    if(e.key==='Escape'){ if(isNotesOpen()) toggleNotes(false); return; }
+    if(e.key.toLowerCase()==='n'){ toggleNotes(); return; }
+    if(isNotesOpen()) return; // freeze slide nav while notes are up
+    // Space/PageUp/PageDown also have browser defaults (scroll, re-activating a
+    // focused nav button → double-advance). preventDefault keeps one keypress = one move.
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();next();}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prev();}
+    else if(e.key==='Home')show(0);
+    else if(e.key==='End')show(slides.length-1);
+    else if(e.key.toLowerCase()==='f')document.getElementById('fs').click();
+    else if(e.key.toLowerCase()==='t')toggleTheme();
+  });
+  // swipe for touch / projector tablets
+  let x0=null;
+  addEventListener('touchstart',e=>x0=e.touches[0].clientX);
+  addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>50)(dx<0?next:prev)();x0=null});
+  show(0);
+</script>
+</body>
+</html>

@@ -40,7 +40,7 @@ apps/api/
         invoices.module.ts
         invoices.controller.ts
         invoices.service.ts
-        invoice-parser.service.ts # Claude text→invoice
+        invoice-parser.service.ts # Gemini text→invoice
         invoices.repository.ts    # only if Prisma calls are non-trivial
         invoices.types.ts
         __tests__/
@@ -80,7 +80,7 @@ import { ClientsModule } from "../clients/clients.module";
   imports: [PrismaModule, ClientsModule],
   controllers: [InvoicesController],
   providers: [InvoicesService, InvoiceParserService],
-  exports: [InvoicesService],  // exported only if another slice needs it
+  exports: [InvoicesService], // exported only if another slice needs it
 })
 export class InvoicesModule {}
 ```
@@ -139,18 +139,14 @@ Rules:
 The service owns the slice's behaviour. It is the only place that:
 
 - Calls Prisma (directly, or via a slice-local repository if queries get complex).
-- Calls external integrations (Stripe, Claude, Resend) via injected adapter services.
+- Calls external integrations (Stripe, Gemini, Resend) via injected adapter services.
 - Orchestrates multiple steps in a transaction.
 
 ```ts
 // modules/invoices/invoices.service.ts
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "@/common/prisma/prisma.service";
-import type {
-  CreateInvoiceBody,
-  Invoice,
-  PaginatedResponse,
-} from "@raket/contracts";
+import type { CreateInvoiceBody, Invoice, PaginatedResponse } from "@raket/contracts";
 import { InvoiceParserService } from "./invoice-parser.service";
 import { toInvoiceDto } from "./invoices.mapper";
 
@@ -283,7 +279,7 @@ model Invoice {
 
 ts-rest validates request bodies, queries, and path params against the Zod contract automatically. **Do not** re-validate inside the service. Trust the handler signature.
 
-If you need *business* validation (e.g., "due date must be after issue date in this user's timezone"), do it in the service and throw a typed exception (§7).
+If you need _business_ validation (e.g., "due date must be after issue date in this user's timezone"), do it in the service and throw a typed exception (§7).
 
 ---
 
@@ -310,14 +306,14 @@ export class TsRestExceptionFilter implements ExceptionFilter {
 
 Mapping table (must stay in sync with `ErrorCodeSchema`):
 
-| Throws                                | Code              | Status |
-| ------------------------------------- | ----------------- | ------ |
+| Throws                                    | Code                | Status |
+| ----------------------------------------- | ------------------- | ------ |
 | `ZodError` (shouldn't occur post-ts-rest) | `VALIDATION_FAILED` | 422    |
-| `UnauthorizedException`               | `UNAUTHENTICATED` | 401    |
-| `ForbiddenException`                  | `FORBIDDEN`       | 403    |
-| `NotFoundException`                   | `NOT_FOUND`       | 404    |
-| `ConflictException`                   | `CONFLICT`        | 409    |
-| Anything else                         | `INTERNAL`        | 500    |
+| `UnauthorizedException`                   | `UNAUTHENTICATED`   | 401    |
+| `ForbiddenException`                      | `FORBIDDEN`         | 403    |
+| `NotFoundException`                       | `NOT_FOUND`         | 404    |
+| `ConflictException`                       | `CONFLICT`          | 409    |
+| Anything else                             | `INTERNAL`          | 500    |
 
 Custom domain errors (`InsufficientFundsError`, `InvoiceAlreadyPaidError`) extend a small `DomainException` base and carry their own code mapping. Define them in `<slice>.errors.ts`.
 
@@ -327,7 +323,7 @@ Custom domain errors (`InsufficientFundsError`, `InvoiceAlreadyPaidError`) exten
 
 ## 8. External integrations
 
-Each external service gets its own slice or a dedicated module under `modules/integrations/`. Wrap the SDK behind a service you own — never let `Stripe`, `Anthropic`, or `Resend` SDK types appear in another slice's signature.
+Each external service gets its own slice or a dedicated module under `modules/integrations/`. Wrap the SDK behind a service you own — never let `Stripe`, `GoogleGenAI`, or `Resend` SDK types appear in another slice's signature.
 
 ```
 modules/
@@ -368,7 +364,8 @@ export const EnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
-  ANTHROPIC_API_KEY: z.string().startsWith("sk-ant-"),
+  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_MODEL: z.string().min(1).default("gemini-2.5-flash"),
   RESEND_API_KEY: z.string().startsWith("re_"),
 });
 export type EnvConfig = z.infer<typeof EnvSchema>;
@@ -391,15 +388,15 @@ Test naming: `describe("InvoicesService.create")` → `it("rejects when client b
 
 ## 11. Naming summary
 
-| Thing                | Convention                                 |
-| -------------------- | ------------------------------------------ |
-| Folder               | `kebab-case` (`payout-methods/`)           |
-| File                 | `feature.role.ts` (`invoices.service.ts`)  |
-| Class                | `PascalCase` (`InvoicesService`)           |
-| Method               | `camelCase`, verb-first (`createInvoice`)  |
-| Prisma model         | `PascalCase` singular (`Invoice`)          |
-| Table                | `snake_case` plural (`invoices`)           |
-| Env var              | `SCREAMING_SNAKE_CASE`                     |
+| Thing                 | Convention                                     |
+| --------------------- | ---------------------------------------------- |
+| Folder                | `kebab-case` (`payout-methods/`)               |
+| File                  | `feature.role.ts` (`invoices.service.ts`)      |
+| Class                 | `PascalCase` (`InvoicesService`)               |
+| Method                | `camelCase`, verb-first (`createInvoice`)      |
+| Prisma model          | `PascalCase` singular (`Invoice`)              |
+| Table                 | `snake_case` plural (`invoices`)               |
+| Env var               | `SCREAMING_SNAKE_CASE`                         |
 | Contract endpoint key | `camelCase` verb (`list`, `getById`, `create`) |
 
 ---

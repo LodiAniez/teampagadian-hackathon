@@ -12,7 +12,7 @@ Cross-border payment platform for Filipino freelancers. Turborepo monorepo: **Ne
 | npm     | 10.x        | `npm -v`        |
 | Git     | any         | `git --version` |
 
-You also need accounts / projects for: **Supabase**, **Stripe** (test mode), **Anthropic**, and **Resend**.
+You also need accounts / projects for: **Supabase**, **Stripe** (test mode), **Google AI Studio** (Gemini), and **Resend**.
 
 ---
 
@@ -78,11 +78,16 @@ stripe listen --forward-to http://localhost:3001/api/v1/stripe/webhook
 
 Copy the `whsec_...` signing secret it prints and paste it into `STRIPE_WEBHOOK_SECRET`.
 
-### Anthropic
+### Google Gemini
+
+Get a key at <https://aistudio.google.com/apikey> (free tier).
 
 ```env
-ANTHROPIC_API_KEY="sk-ant-..."
+GEMINI_API_KEY="AIza..."
+GEMINI_MODEL="gemini-2.5-flash"   # optional — defaults to gemini-2.5-flash
 ```
+
+> Production plan: upgrade to Claude for higher accuracy. Gemini's free tier is the hackathon-cost choice.
 
 ### Resend
 

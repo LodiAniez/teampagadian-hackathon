@@ -45,8 +45,12 @@ export class DashboardService {
         _sum: { amount: true },
         _count: true,
       }),
+      // Savings vs PayPal = the fee *delta*, not PayPal's full fee: PayPal all-in
+      // (~6%) − Stripe (2.9%) ≈ 3.1% of USD received. Per PRD Decision 20 this is
+      // "$50 more on a $1,600 invoice" (50/1600 ≈ 0.031). We don't claim zero
+      // fees — Stripe's 2.9% is real, so it must be netted out here.
       this.prisma.$queryRaw<{ savings: number }[]>`
-        SELECT COALESCE(SUM(amount_received * fx_rate * 0.069), 0)::float AS savings
+        SELECT COALESCE(SUM(amount_received * fx_rate * 0.031), 0)::float AS savings
         FROM payments
         WHERE user_id = ${userId}::uuid
       `,

@@ -130,6 +130,20 @@ describe("DashboardService", () => {
       );
     });
 
+    it("computes savings at the PayPal−Stripe delta (~3.1%), not the full PayPal fee", async () => {
+      // Savings vs PayPal = PayPal all-in (~6%) − Stripe (2.9%) ≈ 3.1% of USD
+      // received. The earlier 0.069 used PayPal's full fee and never netted out
+      // Stripe's 2.9% — overstating savings. Matches PRD Decision 20 ($50 / $1,600).
+      stubEmptySummary(h);
+
+      await h.service.getSummary(USER_ID);
+
+      const stringsArray = h.prisma.$queryRaw.mock.calls[0]?.[0] as readonly string[];
+      const sql = stringsArray.join("");
+      expect(sql).toContain("0.031");
+      expect(sql).not.toContain("0.069");
+    });
+
     it("scopes the this-month aggregate to >= start of the current month", async () => {
       stubEmptySummary(h);
       const before = new Date();

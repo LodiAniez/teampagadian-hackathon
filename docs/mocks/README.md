@@ -33,7 +33,7 @@ Dependencies pulled from CDN (need internet on demo machine):
 | ·   | `index.html`                | —           | Cover / navigation hub. Lists every screen.                                                                   |
 | 01  | `login.html`                | App         | Phone + OTP. PH +63 prefix, six-digit code, demo code `123456`.                                               |
 | 02  | `dashboard.html`            | App         | Earnings hero, savings chip, 6-month chart, recent invoices, FX comparison. Gold FAB triggers the wow moment. |
-| 03  | `invoice-create.html`       | App         | Text / Upload / Manual input modes. Claude-parsed preview + editable form.                                    |
+| 03  | `invoice-create.html`       | App         | Text / Upload / Manual input modes. Gemini-parsed preview + editable form.                                    |
 | 04  | `invoice-sent.html`         | App         | Success state. Copy link / Show QR / View email.                                                              |
 | 05  | `email.html`                | Email app   | The HTML email Acme receives. Tapping Pay Now opens their browser.                                            |
 | 06  | `pay.html`                  | **Browser** | The `/pay/[id]` page at `raket.gg/pay/1042`. Browser chrome visible — client never installs Raket.            |

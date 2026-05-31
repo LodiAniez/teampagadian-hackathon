@@ -1,6 +1,7 @@
 import { ScrollView, View, Text } from "react-native";
 import { Stack } from "expo-router";
 import { Screen } from "@/components/layout/Screen";
+import { SimulatePaymentFab } from "@/features/settlement";
 import { FxComparisonCard } from "@/features/fx";
 
 // $1000 is a representative amount for the pitch; the dashboard has no single
@@ -18,6 +19,7 @@ export default function DashboardScreen() {
         </View>
         <FxComparisonCard usdAmount={DASHBOARD_FX_DEMO_USD} />
       </ScrollView>
+      <SimulatePaymentFab />
     </Screen>
   );
 }

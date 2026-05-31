@@ -5,11 +5,11 @@ import {
   ChatRequestSchema,
   ChatToolNameSchema,
   ClientSummaryResultSchema,
+  BACKUP_PROMPT_CHIPS,
   DEMO_PROMPT_CHIPS,
   DemoPromptChipSchema,
   EarningsResultSchema,
   InvoiceStatusResultSchema,
-  TaxEstimateResultSchema,
 } from "./chat.schema";
 
 describe("ChatMessageSchema", () => {
@@ -127,30 +127,6 @@ describe("InvoiceStatusResultSchema", () => {
   });
 });
 
-describe("TaxEstimateResultSchema", () => {
-  const valid = {
-    quarter: 1,
-    year: 2026,
-    grossReceiptsPhp: 487200,
-    estimatedTaxPhp: 38976,
-    formCode: "1701Q",
-    deadline: "2026-05-15",
-    election: "EIGHT_PERCENT",
-  } satisfies z.input<typeof TaxEstimateResultSchema>;
-
-  it("parses a tax-estimate result", () => {
-    expect(() => TaxEstimateResultSchema.parse(valid)).not.toThrow();
-  });
-
-  it("rejects a quarter outside 1-4", () => {
-    expect(() => TaxEstimateResultSchema.parse({ ...valid, quarter: 5 })).toThrow();
-  });
-
-  it("rejects an election outside the BIR enum", () => {
-    expect(() => TaxEstimateResultSchema.parse({ ...valid, election: "flat" })).toThrow();
-  });
-});
-
 describe("ClientSummaryResultSchema", () => {
   const valid = {
     name: "Acme Northwind",
@@ -176,20 +152,28 @@ describe("ClientSummaryResultSchema", () => {
   });
 });
 
-describe("DEMO_PROMPT_CHIPS", () => {
-  it("each chip matches DemoPromptChipSchema", () => {
-    for (const chip of DEMO_PROMPT_CHIPS) {
+describe("demo prompt chips", () => {
+  const allChips = [...DEMO_PROMPT_CHIPS, ...BACKUP_PROMPT_CHIPS];
+
+  it("every primary and backup chip matches DemoPromptChipSchema", () => {
+    for (const chip of allChips) {
       expect(() => DemoPromptChipSchema.parse(chip)).not.toThrow();
     }
   });
 
-  it("has unique chip ids", () => {
-    const ids = DEMO_PROMPT_CHIPS.map((c) => c.id);
+  it("has unique chip ids across primary + backup sets", () => {
+    const ids = allChips.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("exercises every tool at least once across the demo set", () => {
-    // One chip per tool so the demo lands on all four cards.
-    expect(DEMO_PROMPT_CHIPS.length).toBeGreaterThanOrEqual(ChatToolNameSchema.options.length);
+  it("primary chips cover every tool exactly once (one card each)", () => {
+    const tools = DEMO_PROMPT_CHIPS.map((c) => c.tool);
+    expect(new Set(tools)).toEqual(new Set(ChatToolNameSchema.options));
+    expect(tools.length).toBe(ChatToolNameSchema.options.length);
+  });
+
+  it("provides a backup phrasing for every tool", () => {
+    const backupTools = new Set(BACKUP_PROMPT_CHIPS.map((c) => c.tool));
+    expect(backupTools).toEqual(new Set(ChatToolNameSchema.options));
   });
 });

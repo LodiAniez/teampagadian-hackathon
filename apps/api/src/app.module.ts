@@ -5,7 +5,9 @@ import { CommonAuthModule } from "./common/auth/auth.module";
 import { HealthModule } from "./common/health/health.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { ChatModule } from "./modules/chat/chat.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { FxCompareModule } from "./modules/fx/fx.module";
 import { EmailModule } from "./modules/integrations/email/email.module";
 import { FxModule } from "./modules/integrations/fx/fx.module";
 import { GeminiModule } from "./modules/integrations/gemini/gemini.module";
@@ -27,6 +29,7 @@ import { TaxModule } from "./modules/tax/tax.module";
     GeminiModule,
     AuthModule,
     FxModule,
+    FxCompareModule,
     StripeWebhookModule,
     QrModule,
     EmailModule,
@@ -36,6 +39,7 @@ import { TaxModule } from "./modules/tax/tax.module";
     SettlementModule,
     DashboardModule,
     TaxModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

@@ -1,13 +1,11 @@
 import { Tabs } from "expo-router";
-import { View, Text } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
-  return (
-    <View className="items-center">
-      <Text className={focused ? "text-brand-600 font-semibold text-xs" : "text-gray-400 text-xs"}>
-        {label}
-      </Text>
-    </View>
+type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
+
+function tabIcon(name: IoniconName) {
+  return ({ color, size }: { color: string; size: number }) => (
+    <Ionicons name={name} color={color} size={size} />
   );
 }
 
@@ -25,6 +23,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarLabel: "Home",
+          tabBarIcon: tabIcon("home-outline"),
         }}
       />
       <Tabs.Screen
@@ -32,6 +31,7 @@ export default function TabsLayout() {
         options={{
           title: "Invoices",
           tabBarLabel: "Invoices",
+          tabBarIcon: tabIcon("receipt-outline"),
         }}
       />
       <Tabs.Screen
@@ -39,6 +39,7 @@ export default function TabsLayout() {
         options={{
           title: "AI Chat",
           tabBarLabel: "Chat",
+          tabBarIcon: tabIcon("sparkles-outline"),
         }}
       />
       <Tabs.Screen
@@ -46,6 +47,7 @@ export default function TabsLayout() {
         options={{
           title: "Tax",
           tabBarLabel: "Tax",
+          tabBarIcon: tabIcon("calculator-outline"),
         }}
       />
     </Tabs>

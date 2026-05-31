@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetch as expoFetch } from "expo/fetch";
 import { authHeader } from "@/lib/auth";
 import { env } from "@/lib/env";
+import { toFriendlyChatError } from "../lib/chat-error";
 import { buildRequestMessages } from "../lib/chat-request";
 import { initialStreamState, parseSseChunk, reduceChunk } from "../lib/chat-stream";
 import type { UiChatMessage } from "../types";
@@ -108,9 +109,9 @@ export function useStreamingChat() {
         rafRef.current = null;
       }
       flush();
-      if (streamState.error) setError(streamState.error);
+      if (streamState.error) setError(toFriendlyChatError(streamState.error));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(toFriendlyChatError(err instanceof Error ? err.message : null));
     } finally {
       setIsStreaming(false);
       streamingRef.current = false;
